@@ -18,9 +18,9 @@ ESP32C6Encoder encoder(ENCODER_PIN_A, ENCODER_PIN_B);
 Motor motorB = Motor(BIN1, BIN2, PWMB, offsetB, STBY);
 
 // Constants
-const float COUNTS_PER_REV = 2200.0; // Adjust based on your encoder
-const int TEST_MOTOR_SPEED = 20;     // Moderate speed for testing
-const unsigned long DIRECTION_CHANGE_INTERVAL = 5000; // 5 seconds
+const float COUNTS_PER_REV = 2200.0;  // Adjust based on your encoder
+const int TEST_MOTOR_SPEED = 30;      // Motor speed for testing
+const unsigned long DIRECTION_CHANGE_INTERVAL = 5000;  // 5 seconds
 
 // Variables
 unsigned long lastDirectionChangeTime = 0;
@@ -38,7 +38,7 @@ void printEncoderInfo() {
   static float countsPerSecond = 0;
   
   unsigned long currentTime = millis();
-  if (currentTime - lastSpeedCalcTime >= 100) { // Update speed every 100ms
+  if (currentTime - lastSpeedCalcTime >= 100) {  // Update speed every 100ms
     unsigned long timeElapsed = currentTime - lastSpeedCalcTime;
     countsPerSecond = (count - lastSpeedCalcCount) * 1000.0 / timeElapsed;
     
@@ -46,7 +46,7 @@ void printEncoderInfo() {
     lastSpeedCalcCount = count;
   }
   
-  // Print detailed info
+  // Print status info
   Serial.print("Count: ");
   Serial.print(count);
   Serial.print(" | Delta: ");
@@ -62,45 +62,48 @@ void printEncoderInfo() {
 
 void setup() {
   Serial.begin(115200);
-  while (!Serial) delay(10);
+  delay(500);
   
-  Serial.println("ESP32C6Encoder Library Test");
+  Serial.println("\n\n=== ESP32-C6 Encoder Test ===");
   
   // Initialize motor pins
   pinMode(STBY, OUTPUT);
   digitalWrite(STBY, HIGH);  // Enable motor driver
   
-  // Initialize encoder with pull-ups
-  //encoder.setPullResistors(PullType::UP);
+  // Configure the encoder
+  encoder.setPullResistors(PullType::UP);  // Use pull-ups (important!)
+  encoder.setFilter(10000);  // 10 microseconds filter
   
-  // Try different filter values if needed
-  // encoder.setFilter(5000);  // 5 microseconds filter
+  // If direction is backward, uncomment this:
+  // encoder.setReverseDirection(true);
   
   if (!encoder.begin()) {
     Serial.println("ERROR: Failed to initialize encoder!");
-    while (1) delay(100);  // Stop if encoder init fails
+    while (1) {
+      delay(100);
+    }
   }
   
   Serial.println("Encoder initialized successfully");
   encoder.resetPosition();
   
-  delay(1000); // Short delay before starting motor
+  delay(1000);
   
   // Start the motor
   motorB.drive(motorSpeed);
-  Serial.println("Motor started");
+  Serial.println("Motor started at speed: " + String(motorSpeed));
 }
 
 void loop() {
   unsigned long currentTime = millis();
   
-  // Print encoder information (limit rate to every 100ms)
-  if (currentTime - lastPrintTime >= 100) {
+  // Print encoder information every 200ms
+  if (currentTime - lastPrintTime >= 200) {
     printEncoderInfo();
     lastPrintTime = currentTime;
   }
   
-  // Change direction every few seconds
+  // Change motor direction every 5 seconds
   if (currentTime - lastDirectionChangeTime >= DIRECTION_CHANGE_INTERVAL) {
     // Briefly stop motor before changing direction
     motorB.brake();
@@ -110,33 +113,11 @@ void loop() {
     motorSpeed = -motorSpeed;
     motorB.drive(motorSpeed);
     
-    Serial.println("Motor direction changed");
+    Serial.print("Motor direction changed to: ");
+    Serial.println(motorSpeed);
+    
     lastDirectionChangeTime = currentTime;
   }
   
-  // Test extreme values periodically
-  static bool extremeValueTestDone = false;
-  if (!extremeValueTestDone && currentTime > 15000) {
-    // Test setting to extreme values to verify overflow handling
-    Serial.println("Testing extreme values...");
-    
-    // Test setting position to large positive and negative values
-    encoder.setPosition(32000);
-    Serial.print("Position set to 32000, actual: ");
-    Serial.println(encoder.getPosition());
-    delay(1000);
-    
-    encoder.setPosition(-32000);
-    Serial.print("Position set to -32000, actual: ");
-    Serial.println(encoder.getPosition());
-    delay(1000);
-    
-    // Reset to zero
-    encoder.resetPosition();
-    Serial.println("Position reset to zero");
-    
-    extremeValueTestDone = true;
-  }
-  
-  delay(10); // Short delay
+  delay(10);
 }

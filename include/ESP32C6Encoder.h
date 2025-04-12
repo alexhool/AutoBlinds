@@ -13,7 +13,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/portmacro.h"
 
-#define MAX_ESP32C6_ENCODERS 4 // Max number of encoders (limted by PCNT units)
+#define MAX_ESP32C6_ENCODERS 4 // Max number of encoders (limited by PCNT units)
 
 // Pull resistor options
 enum class PullType {
@@ -54,14 +54,11 @@ public:
   // Resume encoder
   esp_err_t resumeCount();
 
-  static ESP32C6Encoder *encoders[MAX_ESP32C6_ENCODERS];
-  static bool isrServiceInstalled;
-
 private:
   uint8_t _pinA;            // Encoder channel A pin
   uint8_t _pinB;            // Encoder channel B pin
   uint8_t _pcntUnit;        // PCNT unit number (0-3)
-  int64_t _count;           // Position counter
+  int64_t _count;           // Extended position counter
   PullType _pullType;       // Pull resistor configuration
   uint32_t _filterTimeNs;   // Glitch filter time in nanoseconds
   bool _attached;           // Flag indicating if encoder is attached
@@ -70,9 +67,11 @@ private:
   pcnt_channel_handle_t _pcntChanA;
   pcnt_channel_handle_t _pcntChanB;
 
+  static ESP32C6Encoder *encoders[MAX_ESP32C6_ENCODERS];
   static portMUX_TYPE _spinlock;
 
   bool _configureEncoder();
+  void _configureChannels();
   void _applyPullResistors();
   static bool _pcntOverflowHandler(pcnt_unit_handle_t unit, const pcnt_watch_event_data_t *edata, void *user_ctx);
 };
