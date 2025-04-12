@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include <SparkFun_TB6612.h>
-#include "ESP32C6Encoder.h"
+#include <ESP32C6Encoder.h>
 
 // Define pins
 #define ENCODER_PIN_A 11

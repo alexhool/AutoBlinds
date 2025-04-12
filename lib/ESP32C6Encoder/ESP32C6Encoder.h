@@ -19,7 +19,7 @@
 enum class PullType {
   NONE,
   UP,
-  DOWN
+  DOWN   // Default
 };
 
 class ESP32C6Encoder {
