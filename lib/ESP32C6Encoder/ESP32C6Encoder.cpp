@@ -18,9 +18,10 @@ portMUX_TYPE ESP32C6Encoder::_spinlock = portMUX_INITIALIZER_UNLOCKED;
 #define _EXIT_CRITICAL() portEXIT_CRITICAL_SAFE(&_spinlock)
 
 // Constructor
-ESP32C6Encoder::ESP32C6Encoder(uint8_t pinA, uint8_t pinB, uint8_t pcntUnit) {
+ESP32C6Encoder::ESP32C6Encoder(uint8_t pinA, uint8_t pinB, EncoderType encoderType, uint8_t pcntUnit) {
   _pinA = pinA;
   _pinB = pinB;
+  _encoderType = encoderType;
   _pcntUnit = pcntUnit;
   _count = 0;                   // Initialize count to 0
   _pullType = PullType::NONE;   // Default to no pull resistors
@@ -30,9 +31,11 @@ ESP32C6Encoder::ESP32C6Encoder(uint8_t pinA, uint8_t pinB, uint8_t pcntUnit) {
 
 // Destructor
 ESP32C6Encoder::~ESP32C6Encoder() {
+  _ENTER_CRITICAL();
   if (_attached && _pcntUnit < MAX_ESP32C6_ENCODERS && encoders[_pcntUnit] == this) {
     encoders[_pcntUnit] = NULL;
   }
+  _EXIT_CRITICAL();
   if (_attached) {
     pcnt_unit_stop(_pcntUnitHandle);
     pcnt_unit_disable(_pcntUnitHandle);
@@ -63,9 +66,18 @@ void ESP32C6Encoder::setFilter(uint32_t value_ns) {
 
 // Set up encoder hardware
 bool ESP32C6Encoder::begin() {
-  // Check if PCNT unit is valid and available
+  // Check if PCNT unit is valid
   if (_pcntUnit >= MAX_ESP32C6_ENCODERS) return false;
-  if (encoders[_pcntUnit] != NULL && encoders[_pcntUnit] != this) return false;
+
+  // Check if PCNT unit is available
+  _ENTER_CRITICAL();
+  if (encoders[_pcntUnit] != NULL && encoders[_pcntUnit] != this) {
+    _EXIT_CRITICAL();
+    return false;
+  }
+
+  encoders[_pcntUnit] = this;
+  _EXIT_CRITICAL();
 
   return _configureEncoder();
 }
@@ -124,7 +136,7 @@ void ESP32C6Encoder::_configureChannels() {
     _pcntChanB = NULL;
   }
 
-  // Configure channel A
+  // Create channel A
   pcnt_chan_config_t chanAConfig = {
     .edge_gpio_num = _pinA,
     .level_gpio_num = _pinB,
@@ -133,21 +145,38 @@ void ESP32C6Encoder::_configureChannels() {
     return;
   }
 
-  // Configure channel B
-  pcnt_chan_config_t chanBConfig = {
-    .edge_gpio_num = _pinB,
-    .level_gpio_num = _pinA,
-  };
-  if (pcnt_new_channel(_pcntUnitHandle, &chanBConfig, &_pcntChanB) != ESP_OK) {
-    pcnt_del_channel(_pcntChanA);
-    return;
-  }
+  // Configure based on encoder type
+  switch (_encoderType) {
+    case EncoderType::FULL_QUAD:
+      // Create channel B
+      pcnt_chan_config_t chanBConfig = {
+        .edge_gpio_num = _pinB,
+        .level_gpio_num = _pinA,
+      };
+      if (pcnt_new_channel(_pcntUnitHandle, &chanBConfig, &_pcntChanB) != ESP_OK) {
+        pcnt_del_channel(_pcntChanA);
+        return;
+      }
 
-  // Quadrature mode
-  pcnt_channel_set_edge_action(_pcntChanA, PCNT_CHANNEL_EDGE_ACTION_INCREASE, PCNT_CHANNEL_EDGE_ACTION_DECREASE);
-  pcnt_channel_set_level_action(_pcntChanA, PCNT_CHANNEL_LEVEL_ACTION_KEEP, PCNT_CHANNEL_LEVEL_ACTION_INVERSE);
-  pcnt_channel_set_edge_action(_pcntChanB, PCNT_CHANNEL_EDGE_ACTION_INCREASE, PCNT_CHANNEL_EDGE_ACTION_DECREASE);
-  pcnt_channel_set_level_action(_pcntChanB, PCNT_CHANNEL_LEVEL_ACTION_INVERSE, PCNT_CHANNEL_LEVEL_ACTION_KEEP);
+      // Full quadrature mode
+      pcnt_channel_set_edge_action(_pcntChanA, PCNT_CHANNEL_EDGE_ACTION_INCREASE, PCNT_CHANNEL_EDGE_ACTION_DECREASE);
+      pcnt_channel_set_level_action(_pcntChanA, PCNT_CHANNEL_LEVEL_ACTION_KEEP, PCNT_CHANNEL_LEVEL_ACTION_INVERSE);
+      pcnt_channel_set_edge_action(_pcntChanB, PCNT_CHANNEL_EDGE_ACTION_INCREASE, PCNT_CHANNEL_EDGE_ACTION_DECREASE);
+      pcnt_channel_set_level_action(_pcntChanB, PCNT_CHANNEL_LEVEL_ACTION_INVERSE, PCNT_CHANNEL_LEVEL_ACTION_KEEP);
+      break;
+
+    case EncoderType::HALF_QUAD:
+      // Half quadrature
+      pcnt_channel_set_edge_action(_pcntChanA, PCNT_CHANNEL_EDGE_ACTION_INCREASE, PCNT_CHANNEL_EDGE_ACTION_HOLD);
+      pcnt_channel_set_level_action(_pcntChanA, PCNT_CHANNEL_LEVEL_ACTION_KEEP, PCNT_CHANNEL_LEVEL_ACTION_INVERSE);
+      break;
+
+    case EncoderType::SINGLE_EDGE:
+      // Single edge
+      pcnt_channel_set_edge_action(_pcntChanA, PCNT_CHANNEL_EDGE_ACTION_INCREASE, PCNT_CHANNEL_EDGE_ACTION_HOLD);
+      pcnt_channel_set_level_action(_pcntChanA, PCNT_CHANNEL_LEVEL_ACTION_KEEP, PCNT_CHANNEL_LEVEL_ACTION_KEEP);
+      break;
+  }
 }
 
 // Interrupt for counter overflow/underflow
@@ -188,7 +217,6 @@ void ESP32C6Encoder::_applyPullResistors() {
 
 // Configure encoder hardware
 bool ESP32C6Encoder::_configureEncoder() {
-  encoders[_pcntUnit] = this;
 
   // Configure GPIO pins
   gpio_reset_pin((gpio_num_t)_pinA);
@@ -208,11 +236,13 @@ bool ESP32C6Encoder::_configureEncoder() {
   // Initialize PCNT unit
   esp_err_t err = pcnt_new_unit(&unitConfig, &_pcntUnitHandle);
   if (err != ESP_OK) {
+    _ENTER_CRITICAL();
     encoders[_pcntUnit] = NULL;
+    _EXIT_CRITICAL();
     return false;
   }
 
-  // Configure channels for quadrature decoding
+  // Configure channels for encoder type
   _configureChannels();
 
   // Apply glitch filter

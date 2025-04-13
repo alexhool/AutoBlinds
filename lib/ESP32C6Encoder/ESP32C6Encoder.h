@@ -15,17 +15,24 @@
 
 #define MAX_ESP32C6_ENCODERS 4 // Max number of encoders (limited by PCNT units)
 
+// Encoder type options
+enum class EncoderType {
+  FULL_QUAD,    // Default
+  HALF_QUAD,    
+  SINGLE_EDGE
+};
+
 // Pull resistor options
 enum class PullType {
-  NONE,
+  NONE,   // Default
   UP,
-  DOWN   // Default
+  DOWN
 };
 
 class ESP32C6Encoder {
 public:
   // Create encoder
-  ESP32C6Encoder(uint8_t pinA, uint8_t pinB, uint8_t pcntUnit = 0);
+  explicit ESP32C6Encoder(uint8_t pinA, uint8_t pinB, EncoderType encoderType = EncoderType::FULL_QUAD, uint8_t pcntUnit = 0);
 
   // Delete encoder
   ~ESP32C6Encoder();
@@ -55,6 +62,7 @@ public:
   esp_err_t resumeCount();
 
 private:
+  EncoderType _encoderType; // Encoder type
   uint8_t _pinA;            // Encoder channel A pin
   uint8_t _pinB;            // Encoder channel B pin
   uint8_t _pcntUnit;        // PCNT unit number (0-3)
