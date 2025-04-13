@@ -1,24 +1,24 @@
 /**
- * ESP32-C6 Encoder Library using PCNT
+ * ESP32 Encoder Library using PCNT
  * 
  * Based on ESP32Encoder library by hephaestus.
  * See ESP32Encoder_LICENSE for license details.
- * This notice applies only to this file.
+ * This notice applies to this file.
  */
 
-#include "ESP32C6Encoder.h"
+#include "ESP32PCNTEncoder.h"
 #include "driver/gpio.h"
 
 // Initialize static members
-ESP32C6Encoder *ESP32C6Encoder::encoders[MAX_ESP32C6_ENCODERS] = { NULL, };
-portMUX_TYPE ESP32C6Encoder::_spinlock = portMUX_INITIALIZER_UNLOCKED;
+ESP32PCNTEncoder *ESP32PCNTEncoder::encoders[MAX_ESP32_ENCODERS] = { NULL, };
+portMUX_TYPE ESP32PCNTEncoder::_spinlock = portMUX_INITIALIZER_UNLOCKED;
 
 // Macros for thread safety
 #define _ENTER_CRITICAL() portENTER_CRITICAL_SAFE(&_spinlock)
 #define _EXIT_CRITICAL() portEXIT_CRITICAL_SAFE(&_spinlock)
 
 // Constructor
-ESP32C6Encoder::ESP32C6Encoder(uint8_t pinA, uint8_t pinB, uint8_t pcntUnit) {
+ESP32PCNTEncoder::ESP32PCNTEncoder(uint8_t pinA, uint8_t pinB, uint8_t pcntUnit) {
   _pinA = pinA;
   _pinB = pinB;
   _encoderType = EncoderType::FULL_QUAD;   // Default to full quadrature
@@ -30,9 +30,9 @@ ESP32C6Encoder::ESP32C6Encoder(uint8_t pinA, uint8_t pinB, uint8_t pcntUnit) {
 }
 
 // Destructor
-ESP32C6Encoder::~ESP32C6Encoder() {
+ESP32PCNTEncoder::~ESP32PCNTEncoder() {
   _ENTER_CRITICAL();
-  if (_attached && _pcntUnit < MAX_ESP32C6_ENCODERS && encoders[_pcntUnit] == this) {
+  if (_attached && _pcntUnit < MAX_ESP32_ENCODERS && encoders[_pcntUnit] == this) {
     encoders[_pcntUnit] = NULL;
   }
   _EXIT_CRITICAL();
@@ -46,7 +46,7 @@ ESP32C6Encoder::~ESP32C6Encoder() {
 }
 
 // Set encoder type
-void ESP32C6Encoder::setEncoderType(EncoderType type) {
+void ESP32PCNTEncoder::setEncoderType(EncoderType type) {
   _encoderType = type;
   if (_attached) {
     pcnt_unit_stop(_pcntUnitHandle);
@@ -69,7 +69,7 @@ void ESP32C6Encoder::setEncoderType(EncoderType type) {
 }
 
 // Set up internal pull resistors for encoder pins
-void ESP32C6Encoder::setPullResistors(PullType type) {
+void ESP32PCNTEncoder::setPullResistors(PullType type) {
   _pullType = type;
   if (_attached) {
     _applyPullResistors();
@@ -77,7 +77,7 @@ void ESP32C6Encoder::setPullResistors(PullType type) {
 }
 
 // Set up glitch filter to ignore short noise pulses
-void ESP32C6Encoder::setFilter(uint32_t value_ns) {
+void ESP32PCNTEncoder::setFilterNs(uint32_t value_ns) {
   _filterTimeNs = value_ns;
   if (_attached) {
     pcnt_glitch_filter_config_t filterConfig = {
@@ -88,9 +88,9 @@ void ESP32C6Encoder::setFilter(uint32_t value_ns) {
 }
 
 // Set up encoder hardware
-bool ESP32C6Encoder::begin() {
+bool ESP32PCNTEncoder::begin() {
   // Check if PCNT unit is valid
-  if (_pcntUnit >= MAX_ESP32C6_ENCODERS) return false;
+  if (_pcntUnit >= MAX_ESP32_ENCODERS) return false;
 
   // Check if PCNT unit is available
   _ENTER_CRITICAL();
@@ -106,7 +106,7 @@ bool ESP32C6Encoder::begin() {
 }
 
 // Get current position
-int64_t ESP32C6Encoder::getPosition() {
+int64_t ESP32PCNTEncoder::getPosition() {
   int value = 0;
   int64_t result;
 
@@ -121,7 +121,7 @@ int64_t ESP32C6Encoder::getPosition() {
 }
 
 // Set current position
-void ESP32C6Encoder::setPosition(int64_t position) {
+void ESP32PCNTEncoder::setPosition(int64_t position) {
   _ENTER_CRITICAL();
   if (_attached) {
     pcnt_unit_clear_count(_pcntUnitHandle);
@@ -131,24 +131,24 @@ void ESP32C6Encoder::setPosition(int64_t position) {
 }
 
 // Reset position to zero
-void ESP32C6Encoder::resetPosition() {
+void ESP32PCNTEncoder::resetPosition() {
   setPosition(0);
 }
 
 // Pause hardware counter
-esp_err_t ESP32C6Encoder::pauseCount() {
+esp_err_t ESP32PCNTEncoder::pauseCount() {
   if (!_attached) return ESP_FAIL;
   return pcnt_unit_stop(_pcntUnitHandle);
 }
 
 // Resume hardware counter
-esp_err_t ESP32C6Encoder::resumeCount() {
+esp_err_t ESP32PCNTEncoder::resumeCount() {
   if (!_attached) return ESP_FAIL;
   return pcnt_unit_start(_pcntUnitHandle);
 }
 
 // Configure internal pull resistors for encoder pins
-void ESP32C6Encoder::_applyPullResistors() {
+void ESP32PCNTEncoder::_applyPullResistors() {
   // Disable any existing pull resistors
   gpio_set_pull_mode((gpio_num_t)_pinA, GPIO_FLOATING);
   gpio_set_pull_mode((gpio_num_t)_pinB, GPIO_FLOATING);
@@ -164,7 +164,7 @@ void ESP32C6Encoder::_applyPullResistors() {
 }
 
 // Configure PCNT channels
-void ESP32C6Encoder::_configureChannels() {
+void ESP32PCNTEncoder::_configureChannels() {
   // Reset channels if they exist
   if (_pcntChanA) {
     pcnt_del_channel(_pcntChanA);
@@ -222,7 +222,7 @@ void ESP32C6Encoder::_configureChannels() {
 }
 
 // Configure encoder hardware
-bool ESP32C6Encoder::_configureEncoder() {
+bool ESP32PCNTEncoder::_configureEncoder() {
 
   // Configure GPIO pins
   gpio_reset_pin((gpio_num_t)_pinA);
@@ -252,7 +252,7 @@ bool ESP32C6Encoder::_configureEncoder() {
   _configureChannels();
 
   // Apply glitch filter
-  setFilter(_filterTimeNs);
+  setFilterNs(_filterTimeNs);
 
   // Configure overflow/underflow interrupts
   pcnt_event_callbacks_t cbs = {
@@ -272,8 +272,8 @@ bool ESP32C6Encoder::_configureEncoder() {
 }
 
 // Interrupt for counter overflow/underflow
-bool ESP32C6Encoder::_pcntOverflowHandler(pcnt_unit_handle_t unit, const pcnt_watch_event_data_t *edata, void *user_ctx) {
-  ESP32C6Encoder *enc = static_cast<ESP32C6Encoder*>(user_ctx);
+bool ESP32PCNTEncoder::_pcntOverflowHandler(pcnt_unit_handle_t unit, const pcnt_watch_event_data_t *edata, void *user_ctx) {
+  ESP32PCNTEncoder *enc = static_cast<ESP32PCNTEncoder*>(user_ctx);
   if (enc) {
     _ENTER_CRITICAL();
     int value;

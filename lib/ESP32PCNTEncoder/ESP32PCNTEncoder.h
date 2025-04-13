@@ -1,19 +1,37 @@
 /**
- * ESP32-C6 Encoder Library using PCNT
+ * ESP32 Encoder Library using PCNT
  * 
  * Based on ESP32Encoder library by hephaestus.
  * See ESP32Encoder_LICENSE for license details.
- * This notice applies only to this file.
+ * This notice applies to this file.
  */
 
-#ifndef ESP32C6ENCODER_H
-#define ESP32C6ENCODER_H
+#ifndef ESP32PCNTENCODER_H
+#define ESP32PCNTENCODER_H
 
 #include "driver/pulse_cnt.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/portmacro.h"
 
-#define MAX_ESP32C6_ENCODERS 4 // Max number of encoders (limited by PCNT units)
+#if CONFIG_IDF_TARGET_ESP32
+    #define MAX_ESP32_ENCODERS 8
+#elif CONFIG_IDF_TARGET_ESP32S2
+    #define MAX_ESP32_ENCODERS 4
+#elif CONFIG_IDF_TARGET_ESP32S3
+    #define MAX_ESP32_ENCODERS 4
+#elif CONFIG_IDF_TARGET_ESP32C3
+    #define MAX_ESP32_ENCODERS 0
+#elif CONFIG_IDF_TARGET_ESP32C5
+    #define MAX_ESP32_ENCODERS 4
+#elif CONFIG_IDF_TARGET_ESP32C6
+    #define MAX_ESP32_ENCODERS 4
+#elif CONFIG_IDF_TARGET_ESP32H2
+    #define MAX_ESP32_ENCODERS 4
+#elif CONFIG_IDF_TARGET_ESP32P4
+    #define MAX_ESP32_ENCODERS 4
+#else
+    #define MAX_ESP32_ENCODERS 4   // Default
+#endif
 
 // Encoder type options
 enum class EncoderType {
@@ -29,13 +47,13 @@ enum class PullType {
   DOWN
 };
 
-class ESP32C6Encoder {
+class ESP32PCNTEncoder {
 public:
   // Create encoder
-  ESP32C6Encoder(uint8_t pinA, uint8_t pinB, uint8_t pcntUnit = 0);
+  ESP32PCNTEncoder(uint8_t pinA, uint8_t pinB, uint8_t pcntUnit = 0);
 
   // Delete encoder
-  ~ESP32C6Encoder();
+  ~ESP32PCNTEncoder();
 
   // Set encoder type
   void setEncoderType(EncoderType type);
@@ -44,7 +62,7 @@ public:
   void setPullResistors(PullType type);
 
   // Set glitch filter time
-  void setFilter(uint32_t value_ns);
+  void setFilterNs(uint32_t value_ns);
 
   // Start encoder
   bool begin();
@@ -78,7 +96,7 @@ private:
   pcnt_channel_handle_t _pcntChanA;
   pcnt_channel_handle_t _pcntChanB;
 
-  static ESP32C6Encoder *encoders[MAX_ESP32C6_ENCODERS];
+  static ESP32PCNTEncoder *encoders[MAX_ESP32_ENCODERS];
   static portMUX_TYPE _spinlock;
 
   void _applyPullResistors();
@@ -87,4 +105,4 @@ private:
   static bool _pcntOverflowHandler(pcnt_unit_handle_t unit, const pcnt_watch_event_data_t *edata, void *user_ctx);
 };
 
-#endif // ESP32C6ENCODER_H
+#endif // ESP32PCNTENCODER_H
