@@ -124,6 +124,22 @@ esp_err_t ESP32C6Encoder::resumeCount() {
   return pcnt_unit_start(_pcntUnitHandle);
 }
 
+// Configure internal pull resistors for encoder pins
+void ESP32C6Encoder::_applyPullResistors() {
+  // Disable any existing pull resistors
+  gpio_set_pull_mode((gpio_num_t)_pinA, GPIO_FLOATING);
+  gpio_set_pull_mode((gpio_num_t)_pinB, GPIO_FLOATING);
+
+  // Apply selected pull resistors
+  if (_pullType == PullType::UP) {
+    gpio_set_pull_mode((gpio_num_t)_pinA, GPIO_PULLUP_ONLY);
+    gpio_set_pull_mode((gpio_num_t)_pinB, GPIO_PULLUP_ONLY);
+  } else if (_pullType == PullType::DOWN) {
+    gpio_set_pull_mode((gpio_num_t)_pinA, GPIO_PULLDOWN_ONLY);
+    gpio_set_pull_mode((gpio_num_t)_pinB, GPIO_PULLDOWN_ONLY);
+  }
+}
+
 // Configure PCNT channels
 void ESP32C6Encoder::_configureChannels() {
   // Reset channels if they exist
@@ -182,22 +198,6 @@ void ESP32C6Encoder::_configureChannels() {
   }
 }
 
-// Configure internal pull resistors for encoder pins
-void ESP32C6Encoder::_applyPullResistors() {
-  // Disable any existing pull resistors
-  gpio_set_pull_mode((gpio_num_t)_pinA, GPIO_FLOATING);
-  gpio_set_pull_mode((gpio_num_t)_pinB, GPIO_FLOATING);
-
-  // Apply selected pull resistors
-  if (_pullType == PullType::UP) {
-    gpio_set_pull_mode((gpio_num_t)_pinA, GPIO_PULLUP_ONLY);
-    gpio_set_pull_mode((gpio_num_t)_pinB, GPIO_PULLUP_ONLY);
-  } else if (_pullType == PullType::DOWN) {
-    gpio_set_pull_mode((gpio_num_t)_pinA, GPIO_PULLDOWN_ONLY);
-    gpio_set_pull_mode((gpio_num_t)_pinB, GPIO_PULLDOWN_ONLY);
-  }
-}
-
 // Configure encoder hardware
 bool ESP32C6Encoder::_configureEncoder() {
 
@@ -214,9 +214,6 @@ bool ESP32C6Encoder::_configureEncoder() {
   pcnt_unit_config_t unitConfig = {
     .low_limit = INT16_MIN,
     .high_limit = INT16_MAX,
-    .flags = {
-      .accum_count = 1,
-    }
   };
 
   // Initialize PCNT unit
@@ -234,6 +231,14 @@ bool ESP32C6Encoder::_configureEncoder() {
   // Apply glitch filter
   setFilter(_filterTimeNs);
 
+  // Configure overflow/underflow interrupts
+  pcnt_event_callbacks_t cbs = {
+    .on_reach = _pcntOverflowHandler,
+  };
+  pcnt_unit_register_event_callbacks(_pcntUnitHandle, &cbs, this);
+  pcnt_unit_add_watch_point(_pcntUnitHandle, unitConfig.low_limit);
+  pcnt_unit_add_watch_point(_pcntUnitHandle, unitConfig.high_limit);
+
   // Enable PCNT unit
   pcnt_unit_enable(_pcntUnitHandle);
   pcnt_unit_clear_count(_pcntUnitHandle);
@@ -241,4 +246,24 @@ bool ESP32C6Encoder::_configureEncoder() {
 
   _attached = true;
   return true;
+}
+
+// Interrupt for counter overflow/underflow
+bool ESP32C6Encoder::_pcntOverflowHandler(pcnt_unit_handle_t unit, const pcnt_watch_event_data_t *edata, void *user_ctx) {
+  ESP32C6Encoder *enc = static_cast<ESP32C6Encoder*>(user_ctx);
+  if (enc) {
+    _ENTER_CRITICAL();
+    int value;
+    pcnt_unit_get_count(unit, &value);  // Get current count value
+
+    if (edata->watch_point_value == INT16_MIN) { 
+      // Underflow
+      enc->_count += INT16_MIN;
+    } else if (edata->watch_point_value == INT16_MAX) { 
+      // Overflow
+      enc->_count += INT16_MAX;
+    }
+    _EXIT_CRITICAL();
+  }
+  return true;  // Keep ISR active
 }

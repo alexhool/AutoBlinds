@@ -78,9 +78,10 @@ private:
   static ESP32C6Encoder *encoders[MAX_ESP32C6_ENCODERS];
   static portMUX_TYPE _spinlock;
 
-  bool _configureEncoder();
-  void _configureChannels();
   void _applyPullResistors();
+  void _configureChannels();
+  bool _configureEncoder();
+  static bool _pcntOverflowHandler(pcnt_unit_handle_t unit, const pcnt_watch_event_data_t *edata, void *user_ctx);
 };
 
 #endif // ESP32C6ENCODER_H
