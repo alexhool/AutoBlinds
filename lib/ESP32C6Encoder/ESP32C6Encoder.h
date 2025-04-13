@@ -81,7 +81,6 @@ private:
   bool _configureEncoder();
   void _configureChannels();
   void _applyPullResistors();
-  static bool _pcntOverflowHandler(pcnt_unit_handle_t unit, const pcnt_watch_event_data_t *edata, void *user_ctx);
 };
 
 #endif // ESP32C6ENCODER_H

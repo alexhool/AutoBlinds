@@ -21,12 +21,12 @@ portMUX_TYPE ESP32C6Encoder::_spinlock = portMUX_INITIALIZER_UNLOCKED;
 ESP32C6Encoder::ESP32C6Encoder(uint8_t pinA, uint8_t pinB, EncoderType encoderType, uint8_t pcntUnit) {
   _pinA = pinA;
   _pinB = pinB;
-  _encoderType = encoderType;
-  _pcntUnit = pcntUnit;
-  _count = 0;                   // Initialize count to 0
+  _encoderType = encoderType;   // Default to full quadrature
+  _pcntUnit = pcntUnit;         // Default to PCNT unit 0
+  _count = 0;
   _pullType = PullType::NONE;   // Default to no pull resistors
-  _filterTimeNs = 10000;        // Default filter time to 10us
-  _attached = false;            // Not yet attached to PCNT
+  _filterTimeNs = 10000;        // Default to 10us glitch filter
+  _attached = false;
 }
 
 // Destructor
@@ -147,7 +147,7 @@ void ESP32C6Encoder::_configureChannels() {
 
   // Configure based on encoder type
   switch (_encoderType) {
-    case EncoderType::FULL_QUAD:
+    case EncoderType::FULL_QUAD: {
       // Create channel B
       pcnt_chan_config_t chanBConfig = {
         .edge_gpio_num = _pinB,
@@ -164,39 +164,22 @@ void ESP32C6Encoder::_configureChannels() {
       pcnt_channel_set_edge_action(_pcntChanB, PCNT_CHANNEL_EDGE_ACTION_INCREASE, PCNT_CHANNEL_EDGE_ACTION_DECREASE);
       pcnt_channel_set_level_action(_pcntChanB, PCNT_CHANNEL_LEVEL_ACTION_INVERSE, PCNT_CHANNEL_LEVEL_ACTION_KEEP);
       break;
+    }
 
-    case EncoderType::HALF_QUAD:
+    case EncoderType::HALF_QUAD: {
       // Half quadrature
       pcnt_channel_set_edge_action(_pcntChanA, PCNT_CHANNEL_EDGE_ACTION_INCREASE, PCNT_CHANNEL_EDGE_ACTION_HOLD);
       pcnt_channel_set_level_action(_pcntChanA, PCNT_CHANNEL_LEVEL_ACTION_KEEP, PCNT_CHANNEL_LEVEL_ACTION_INVERSE);
       break;
+    }
 
-    case EncoderType::SINGLE_EDGE:
+    case EncoderType::SINGLE_EDGE: {
       // Single edge
       pcnt_channel_set_edge_action(_pcntChanA, PCNT_CHANNEL_EDGE_ACTION_INCREASE, PCNT_CHANNEL_EDGE_ACTION_HOLD);
       pcnt_channel_set_level_action(_pcntChanA, PCNT_CHANNEL_LEVEL_ACTION_KEEP, PCNT_CHANNEL_LEVEL_ACTION_KEEP);
       break;
-  }
-}
-
-// Interrupt for counter overflow/underflow
-bool ESP32C6Encoder::_pcntOverflowHandler(pcnt_unit_handle_t unit, const pcnt_watch_event_data_t *edata, void *user_ctx) {
-  ESP32C6Encoder *enc = static_cast<ESP32C6Encoder*>(user_ctx);
-  if (enc) {
-    _ENTER_CRITICAL();
-    int value;
-    pcnt_unit_get_count(unit, &value);  // Get current count value
-
-    if (edata->watch_point_value == INT16_MIN) { 
-      // Underflow
-      enc->_count += INT16_MIN;
-    } else if (edata->watch_point_value == INT16_MAX) { 
-      // Overflow
-      enc->_count += INT16_MAX;
     }
-    _EXIT_CRITICAL();
   }
-  return true;  // Keep ISR active
 }
 
 // Configure internal pull resistors for encoder pins
@@ -231,6 +214,9 @@ bool ESP32C6Encoder::_configureEncoder() {
   pcnt_unit_config_t unitConfig = {
     .low_limit = INT16_MIN,
     .high_limit = INT16_MAX,
+    .flags = {
+      .accum_count = 1,
+    }
   };
 
   // Initialize PCNT unit
@@ -247,14 +233,6 @@ bool ESP32C6Encoder::_configureEncoder() {
 
   // Apply glitch filter
   setFilter(_filterTimeNs);
-
-  // Configure overflow/underflow interrupts
-  pcnt_event_callbacks_t cbs = {
-    .on_reach = _pcntOverflowHandler,
-  };
-  pcnt_unit_register_event_callbacks(_pcntUnitHandle, &cbs, this);
-  pcnt_unit_add_watch_point(_pcntUnitHandle, unitConfig.low_limit);
-  pcnt_unit_add_watch_point(_pcntUnitHandle, unitConfig.high_limit);
 
   // Enable PCNT unit
   pcnt_unit_enable(_pcntUnitHandle);
