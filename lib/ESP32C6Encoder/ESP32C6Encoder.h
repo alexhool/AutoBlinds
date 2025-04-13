@@ -32,10 +32,13 @@ enum class PullType {
 class ESP32C6Encoder {
 public:
   // Create encoder
-  explicit ESP32C6Encoder(uint8_t pinA, uint8_t pinB, EncoderType encoderType = EncoderType::FULL_QUAD, uint8_t pcntUnit = 0);
+  ESP32C6Encoder(uint8_t pinA, uint8_t pinB, uint8_t pcntUnit = 0);
 
   // Delete encoder
   ~ESP32C6Encoder();
+
+  // Set encoder type
+  void setEncoderType(EncoderType type);
 
   // Set pull resistors
   void setPullResistors(PullType type);

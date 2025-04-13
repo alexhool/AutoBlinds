@@ -18,14 +18,14 @@ portMUX_TYPE ESP32C6Encoder::_spinlock = portMUX_INITIALIZER_UNLOCKED;
 #define _EXIT_CRITICAL() portEXIT_CRITICAL_SAFE(&_spinlock)
 
 // Constructor
-ESP32C6Encoder::ESP32C6Encoder(uint8_t pinA, uint8_t pinB, EncoderType encoderType, uint8_t pcntUnit) {
+ESP32C6Encoder::ESP32C6Encoder(uint8_t pinA, uint8_t pinB, uint8_t pcntUnit) {
   _pinA = pinA;
   _pinB = pinB;
-  _encoderType = encoderType;   // Default to full quadrature
-  _pcntUnit = pcntUnit;         // Default to PCNT unit 0
+  _encoderType = EncoderType::FULL_QUAD;   // Default to full quadrature
+  _pcntUnit = pcntUnit;                    // Default to PCNT unit 0
   _count = 0;
-  _pullType = PullType::NONE;   // Default to no pull resistors
-  _filterTimeNs = 10000;        // Default to 10us glitch filter
+  _pullType = PullType::NONE;              // Default to no pull resistors
+  _filterTimeNs = 10000;                   // Default to 10us glitch filter
   _attached = false;
 }
 
@@ -42,6 +42,29 @@ ESP32C6Encoder::~ESP32C6Encoder() {
     pcnt_del_channel(_pcntChanA);
     pcnt_del_channel(_pcntChanB);
     pcnt_del_unit(_pcntUnitHandle);
+  }
+}
+
+// Set encoder type
+void ESP32C6Encoder::setEncoderType(EncoderType type) {
+  _encoderType = type;
+  if (_attached) {
+    pcnt_unit_stop(_pcntUnitHandle);
+    pcnt_unit_disable(_pcntUnitHandle);
+
+    if (_pcntChanA) {
+      pcnt_del_channel(_pcntChanA);
+      _pcntChanA = nullptr;
+    }
+    if (_pcntChanB) {
+      pcnt_del_channel(_pcntChanB);
+      _pcntChanB = nullptr;
+    }
+
+    pcnt_del_unit(_pcntUnitHandle);
+    _attached = false;
+
+    begin();
   }
 }
 
@@ -143,13 +166,13 @@ void ESP32C6Encoder::_applyPullResistors() {
 // Configure PCNT channels
 void ESP32C6Encoder::_configureChannels() {
   // Reset channels if they exist
-  if (_pcntChanA != NULL) {
+  if (_pcntChanA) {
     pcnt_del_channel(_pcntChanA);
-    _pcntChanA = NULL;
+    _pcntChanA = nullptr;
   }
-  if (_pcntChanB != NULL) {
+  if (_pcntChanB) {
     pcnt_del_channel(_pcntChanB);
-    _pcntChanB = NULL;
+    _pcntChanB = nullptr;
   }
 
   // Create channel A
