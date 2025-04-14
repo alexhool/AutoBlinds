@@ -2,7 +2,7 @@
  * ESP32 Encoder Library using PCNT
  * 
  * Based on ESP32Encoder library by hephaestus.
- * See ESP32Encoder_LICENSE for license details.
+ * See LICENSE_ESP32Encoder for license details.
  * This notice applies to this file.
  */
 
