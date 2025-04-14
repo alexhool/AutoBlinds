@@ -1,79 +1,86 @@
 #include <Arduino.h>
+#include <ESP32PCNTEncoder.h>
 #include <SparkFun_TB6612.h>
-#include <ESP32C6Encoder.h>
+#include <VL53L0X.h>
 
-// === Pin Config ===
-const int ENCODER_PIN_A = 11;
-const int ENCODER_PIN_B = 10;
+#define ENCA 11
+#define ENCB 10
+#define BIN1 22
+#define BIN2 21
+#define PWMB 20
+#define STBY 23
 
-const int BIN1 = 22;
-const int BIN2 = 21;
-const int PWMB = 20;
-const int STBY = 23;
-const int offsetB = 1;
+#define WAVE_DISTANCE 25
 
-// === Objects ===
-ESP32C6Encoder encoder(ENCODER_PIN_A, ENCODER_PIN_B);
-Motor motorB(BIN1, BIN2, PWMB, offsetB, STBY);
+uint8_t speed = 150;
 
-// === Settings ===
-const int MOTOR_SPEED = 200;
-const int TEST_DURATION_MS = 5000;
+int64_t openPos = 10000;
+int64_t closePos = 0;
+bool isOpen = false;
 
-void runMotorTest(const char* label) {
-  Serial.printf("\n=== %s ===\n", label);
-  encoder.resetPosition();
-
-  motorB.drive(MOTOR_SPEED);
-  unsigned long start = millis();
-
-  while (millis() - start < TEST_DURATION_MS) {
-    Serial.printf("Count: %lld\n", encoder.getPosition());
-    delay(200);
-  }
-
-  motorB.brake();
-  delay(300);
-
-  motorB.drive(-MOTOR_SPEED);
-  start = millis();
-
-  while (millis() - start < TEST_DURATION_MS) {
-    Serial.printf("Count: %lld\n", encoder.getPosition());
-    delay(200);
-  }
-
-  motorB.brake();
-  delay(1000);
-}
+VL53L0X tof;
+ESP32PCNTEncoder encoder(ENCA, ENCB);
+Motor motor(BIN1, BIN2, PWMB, 1, STBY);
 
 void setup() {
   Serial.begin(115200);
-  delay(500);
+  while (!Serial) {}
+  Serial.println("\n--Setup--");
 
-  pinMode(STBY, OUTPUT);
-  digitalWrite(STBY, HIGH);  // Enable motor driver
-
-  encoder.setPullResistors(PullType::UP);
-  encoder.setFilter(10000);
-
-  if (!encoder.begin()) {
-    Serial.println("Failed to initialize encoder.");
-    while (true) delay(100);
+  Serial.print("Initializing ToF...");
+  Wire.begin(6, 7);
+  tof.setTimeout(100); // gives up after 100ms
+  while (!tof.init()) {
+    Serial.print(".");
+    delay(500);
   }
+  tof.setMeasurementTimingBudget(20000); // 20ms measurement time (default: 33ms)
+  tof.startContinuous();
+  Serial.println("Done");
 
-  encoder.setEncoderType(EncoderType::FULL_QUAD);
-  runMotorTest("FULL QUAD");
+  Serial.print("Initializing Motor...");
+  motor.standby();
+  while (!encoder.begin()) {
+    Serial.print(".");
+    delay(500);
+  }
+  encoder.resetPosition();
+  Serial.println("Done");
 
-  encoder.setEncoderType(EncoderType::HALF_QUAD);
-  runMotorTest("HALF QUAD");
-
-  encoder.setEncoderType(EncoderType::SINGLE_EDGE);
-  runMotorTest("SINGLE EDGE");
-
-  Serial.println("\n=== All Tests Complete ===");
+  Serial.println("\n--Program--");
 }
 
 void loop() {
-  // Run once
+  if (tof.readRangeContinuousMillimeters() < WAVE_DISTANCE) {
+    int64_t pos = encoder.getPosition();
+    if (isOpen) {
+      rgbLedWrite(RGB_BUILTIN, 255, 0, 0);
+      Serial.println("Closing blinds...");
+      motor.drive(-speed);
+      while (pos > closePos) {
+        pos = encoder.getPosition();
+      }
+      encoder.setPosition(closePos);
+      if (pos != closePos) {
+        Serial.print("Pos: ");
+        Serial.println(pos);
+      }
+    } else {
+      rgbLedWrite(RGB_BUILTIN, 0, 255, 0);
+      Serial.println("Opening blinds...");
+      motor.drive(speed);
+      while (pos < openPos) {
+        pos = encoder.getPosition();
+      }
+      encoder.setPosition(openPos);
+      if (pos != openPos) {
+        Serial.print("Pos: ");
+        Serial.println(pos);
+      }
+    }
+    rgbLedWrite(RGB_BUILTIN, 0, 0, 0);
+    motor.brake();
+    isOpen = !isOpen;
+  }
+  delay(10);
 }
