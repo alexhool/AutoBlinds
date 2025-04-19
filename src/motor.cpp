@@ -23,7 +23,7 @@ void setupMotor() {
   encoder.setEncoderType(EncoderType::FULL_QUAD);
   while (!encoder.begin()) {
     Serial.print(".");
-    delay(500);
+    delay(100);
   }
   // Start count from 0
   encoder.resetPosition();

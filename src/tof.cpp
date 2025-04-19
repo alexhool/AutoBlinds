@@ -17,6 +17,7 @@ void setupTof() {
   tof.setTimeout(500);
   while (!tof.init()) {
     Serial.print(".");
+    delay(100);
   }
   // Set single measurement time (us)
   tof.setMeasurementTimingBudget(50000);
