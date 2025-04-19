@@ -8,7 +8,7 @@ ESP32PCNTEncoder encoder(PIN_ENC_A, PIN_ENC_B, ENC_PCNT);
 
 // Initialize motor driver GPIO and encoder
 void setupMotor() {
-  Serial.println("Initializing Motor...");
+  Serial.print("Initializing Motor...");
 
   // Set motor driver pins as outputs
   pinMode(PIN_MTR_IN1, OUTPUT);

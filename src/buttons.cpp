@@ -22,7 +22,7 @@ static constexpr uint8_t numButtons = sizeof(buttons) / sizeof(ButtonInfo);
 
 // Initialize button GPIO with internal pull-down resistors
 void setupButtons() {
-  Serial.println("Initializing Buttons...");
+  Serial.print("Initializing Buttons...");
 
   for (int i = 0; i < numButtons; ++i) {
     pinMode(buttons[i].pin, INPUT_PULLDOWN);
