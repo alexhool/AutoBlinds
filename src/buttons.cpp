@@ -2,10 +2,18 @@
 #include <Arduino.h>
 #include "config.h"
 
+// Button states
+enum class ButtonState {
+  IDLE,      // Default
+  PRESSED,
+  HELD,
+  RELEASED
+};
+
 // Button state information
 struct ButtonInfo {
   const uint8_t pin;              // GPIO pin number
-  ButtonInputState state;         // Current debounced state
+  ButtonState state;         // Current debounced state
   bool lastReading;               // Last raw reading
   unsigned long lastStateTime;    // Time of last state change
   unsigned long pressStartTime;   // Time of initial press
@@ -14,9 +22,9 @@ struct ButtonInfo {
 
 // Button state array with initial values
 static ButtonInfo buttons[] = {
-  {PIN_BTN_OPEN, ButtonInputState::IDLE, LOW, 0, 0, false},
-  {PIN_BTN_CLOSE, ButtonInputState::IDLE, LOW, 0, 0, false},
-  {PIN_BTN_MODE, ButtonInputState::IDLE, LOW, 0, 0, false}
+  {PIN_BTN_OPEN, ButtonState::IDLE, LOW, 0, 0, false},
+  {PIN_BTN_CLOSE, ButtonState::IDLE, LOW, 0, 0, false},
+  {PIN_BTN_MODE, ButtonState::IDLE, LOW, 0, 0, false}
 };
 static constexpr uint8_t numButtons = sizeof(buttons) / sizeof(ButtonInfo);
 
@@ -46,24 +54,24 @@ void updateButtonStates() {
       bool isPressed = (reading == HIGH);
 
       // Compare debounced reading with current state
-      if (isPressed != (buttons[i].state == ButtonInputState::PRESSED || buttons[i].state == ButtonInputState::HELD)) {
+      if (isPressed != (buttons[i].state == ButtonState::PRESSED || buttons[i].state == ButtonState::HELD)) {
         // Button state changed from IDLE/RELEASED
         if (isPressed) {
-          buttons[i].state = ButtonInputState::PRESSED;
+          buttons[i].state = ButtonState::PRESSED;
           buttons[i].pressStartTime = currentTime;
           buttons[i].holdTriggered = false;
         } else {
-          buttons[i].state = ButtonInputState::RELEASED;
+          buttons[i].state = ButtonState::RELEASED;
         }
       }
       // Check if the button is being held
-      else if (buttons[i].state == ButtonInputState::PRESSED && !buttons[i].holdTriggered) {
+      else if (buttons[i].state == ButtonState::PRESSED && !buttons[i].holdTriggered) {
         // Determine hold duration based on button type (open/close default to 500ms)
         unsigned long holdDuration = (buttons[i].pin == PIN_BTN_MODE) ? CONFIG_HOLD_TIME : 500;
 
         // Check if the hold duration has been met
         if ((currentTime - buttons[i].pressStartTime) >= holdDuration) {
-          buttons[i].state = ButtonInputState::HELD;
+          buttons[i].state = ButtonState::HELD;
           buttons[i].holdTriggered = true;
         }
       }
@@ -78,7 +86,7 @@ void updateButtonStates() {
 bool isButtonPressed(uint8_t pin) {
   for (int i = 0; i < numButtons; ++i) {
     if (buttons[i].pin == pin) {
-      return buttons[i].state == ButtonInputState::PRESSED;
+      return buttons[i].state == ButtonState::PRESSED;
     }
   }
   return false;
@@ -88,7 +96,7 @@ bool isButtonPressed(uint8_t pin) {
 bool isButtonHeld(uint8_t pin) {
   for (int i = 0; i < numButtons; ++i) {
     if (buttons[i].pin == pin) {
-      return buttons[i].state == ButtonInputState::HELD;
+      return buttons[i].state == ButtonState::HELD;
     }
   }
   return false;
@@ -98,9 +106,9 @@ bool isButtonHeld(uint8_t pin) {
 bool isButtonReleased(uint8_t pin) {
   for (int i = 0; i < numButtons; ++i) {
     if (buttons[i].pin == pin) {
-      if (buttons[i].state == ButtonInputState::RELEASED) {
+      if (buttons[i].state == ButtonState::RELEASED) {
         // Transition RELEASED state to IDLE
-        buttons[i].state = ButtonInputState::IDLE;
+        buttons[i].state = ButtonState::IDLE;
         return true;
       }
       break;

@@ -3,14 +3,6 @@
 
 #include <cstdint>
 
-// Button states
-enum class ButtonInputState {
-  IDLE,      // Default
-  PRESSED,
-  HELD,
-  RELEASED
-};
-
 // Initialize button pins
 void setupButtons();
 
