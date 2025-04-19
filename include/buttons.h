@@ -1,27 +1,29 @@
 #ifndef BUTTONS_H
 #define BUTTONS_H
 
-// Button pins
-#define BTN_OPEN 12
-#define BTN_CLOSE 13
-#define BTN_MODE 19
+#include <cstdint>
 
-// Button constants
-#define BTN_DEBOUNCE 50
-#define HOLD_TIME 3000
+// Button states
+enum class ButtonInputState {
+  IDLE,      // Default
+  PRESSED,
+  HELD,
+  RELEASED
+};
 
 // Initialize button pins
-void buttonsInit();
+void setupButtons();
 
-// Update button states
-void updateButtons();
+// Handle button state transitions from readings
+void updateButtonStates();
 
-// Process button events
-void handleButtons();
+// Check if the button was just pressed
+bool isButtonPressed(uint8_t pin);
 
-// Get current button states
-bool getDebouncedOpen();
-bool getDebouncedClose();
-bool getDebouncedMode();
+// Check if the button is currently held
+bool isButtonHeld(uint8_t pin);
+
+// Check if the button was just released
+bool isButtonReleased(uint8_t pin);
 
 #endif // BUTTONS_H

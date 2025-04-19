@@ -1,202 +1,110 @@
 #include "buttons.h"
+#include <Arduino.h>
 #include "config.h"
-#include "motor.h"
-#include "led.h"
 
-// Open button variables
-static bool openState = LOW;
-static bool lastOpenState = LOW;
-static unsigned long lastOpenTime = 0;
+// Button state information
+struct ButtonInfo {
+  const uint8_t pin;              // GPIO pin number
+  ButtonInputState state;         // Current debounced state
+  bool lastReading;               // Last raw reading
+  unsigned long lastStateTime;    // Time of last state change
+  unsigned long pressStartTime;   // Time of initial press
+  bool holdTriggered;             // Flag indicating if button is held
+};
 
-// Close button variables
-static bool closeState = LOW;
-static bool lastCloseState = LOW;
-static unsigned long lastCloseTime = 0;
+// Button state array with initial values
+static ButtonInfo buttons[] = {
+  {PIN_BTN_OPEN, ButtonInputState::IDLE, LOW, 0, 0, false},
+  {PIN_BTN_CLOSE, ButtonInputState::IDLE, LOW, 0, 0, false},
+  {PIN_BTN_MODE, ButtonInputState::IDLE, LOW, 0, 0, false}
+};
+static constexpr uint8_t numButtons = sizeof(buttons) / sizeof(ButtonInfo);
 
-// Mode button variables
-static bool modeState = LOW;
-static bool lastModeState = LOW;
-static bool modeButtonHeld = false;
-static unsigned long lastModeTime = 0;
-static unsigned long modeHoldTime = 0;
+// Initialize button GPIO with internal pull-down resistors
+void setupButtons() {
+  Serial.println("Initializing Buttons...");
 
-// Initialize button pins
-void buttonsInit() {
-  Serial.print("Initializing Buttons...");
-  pinMode(BTN_OPEN, INPUT_PULLDOWN);
-  pinMode(BTN_CLOSE, INPUT_PULLDOWN);
-  pinMode(BTN_MODE, INPUT_PULLDOWN);
+  for (int i = 0; i < numButtons; ++i) {
+    pinMode(buttons[i].pin, INPUT_PULLDOWN);
+  }
+
   Serial.println("Done");
 }
 
-// Update button states
-void updateButtons() {
-  unsigned long curTime = millis();
+// Handle button state transitions from debounced readings
+void updateButtonStates() {
+  unsigned long currentTime = millis();
 
-  // Open button
-  bool state = digitalRead(BTN_OPEN);
-  if (state != openState && curTime - lastOpenTime > BTN_DEBOUNCE) {
-    openState = state;
-    lastOpenTime = curTime;
-  }
-  
-  // Close button
-  state = digitalRead(BTN_CLOSE);
-  if (state != closeState && curTime - lastCloseTime > BTN_DEBOUNCE) {
-    closeState = state;
-    lastCloseTime = curTime;
-  }
-  
-  // Mode button
-  state = digitalRead(BTN_MODE);
-  if (state != modeState && curTime - lastModeTime > BTN_DEBOUNCE) {
-    modeState = state;
-    lastModeTime = curTime;
-  }
-}
+  for (int i = 0; i < numButtons; ++i) {
+    bool reading = digitalRead(buttons[i].pin);
 
-// Handle button events
-void handleButtons() {
-  // Detect button transitions
-  bool openPressed = (openState && !lastOpenState);
-  bool openReleased = (!openState && lastOpenState);
-  bool closePressed = (closeState && !lastCloseState);
-  bool closeReleased = (!closeState && lastCloseState);
-  bool modePressed = (modeState && !lastModeState);
-  bool modeReleased = (!modeState && lastModeState);
-  unsigned long curTime = millis();
+    // Debounce button reading
+    if (reading != buttons[i].lastReading) {
+      buttons[i].lastStateTime = currentTime;
+    }
+    if ((currentTime - buttons[i].lastStateTime) > BTN_DEBOUNCE) {
+      bool isPressed = (reading == HIGH);
 
-  // Open button pressed
-  if (openPressed) {
-    modeHoldTime = curTime;
-
-    if (currentMode == NORMAL) {
-      if (motorState == MOTOR_CLOSING) {
-          motorState = MOTOR_IDLE;
-          Serial.println("Stopping blinds...");
-          setLEDStatus(STATUS_IDLE);
-          motorBrake();
-          motorStandby();
-      } else if (motorState == MOTOR_IDLE) {
-        Serial.println("Opening blinds...");
-        motorState = MOTOR_OPENING;
-        setLEDStatus(STATUS_OPENING);
-        targetPos = openPos;
-        if (openPos > closePos) {
-          motorDrive(MOTOR_SPEED);
+      // Compare debounced reading with current state
+      if (isPressed != (buttons[i].state == ButtonInputState::PRESSED || buttons[i].state == ButtonInputState::HELD)) {
+        // Button state changed from IDLE/RELEASED
+        if (isPressed) {
+          buttons[i].state = ButtonInputState::PRESSED;
+          buttons[i].pressStartTime = currentTime;
+          buttons[i].holdTriggered = false;
         } else {
-          motorDrive(-MOTOR_SPEED);
+          buttons[i].state = ButtonInputState::RELEASED;
         }
       }
-    } else {
-      motorDrive(MOTOR_SPEED / 2);
-      motorState = MOTOR_MANUAL;
-    }
-  }
+      // Check if the button is being held
+      else if (buttons[i].state == ButtonInputState::PRESSED && !buttons[i].holdTriggered) {
+        // Determine hold duration based on button type (open/close default to 500ms)
+        unsigned long holdDuration = (buttons[i].pin == PIN_BTN_MODE) ? CONFIG_HOLD_TIME : 500;
 
-  // Close button pressed
-  if (closePressed) {
-    modeHoldTime = curTime;
-
-    if (currentMode == NORMAL) {
-      if (motorState == MOTOR_OPENING) {
-          Serial.println("Stopping blinds...");
-          motorState = MOTOR_IDLE;
-          setLEDStatus(STATUS_IDLE);
-          motorBrake();
-          motorStandby();
-      } else if (motorState == MOTOR_IDLE) {
-        Serial.println("Closing blinds...");
-        motorState = MOTOR_CLOSING;
-        setLEDStatus(STATUS_CLOSING);
-        targetPos = closePos;
-        if (closePos < openPos) {
-          motorDrive(-MOTOR_SPEED);
-        } else {
-          motorDrive(MOTOR_SPEED);
+        // Check if the hold duration has been met
+        if ((currentTime - buttons[i].pressStartTime) >= holdDuration) {
+          buttons[i].state = ButtonInputState::HELD;
+          buttons[i].holdTriggered = true;
         }
       }
-    } else {
-      motorDrive(-MOTOR_SPEED / 2);
-      motorState = MOTOR_MANUAL;
+    }
+
+    // Store current reading for next call
+    buttons[i].lastReading = reading;
+  }
+}
+
+// Check if the button was just pressed
+bool isButtonPressed(uint8_t pin) {
+  for (int i = 0; i < numButtons; ++i) {
+    if (buttons[i].pin == pin) {
+      return buttons[i].state == ButtonInputState::PRESSED;
     }
   }
+  return false;
+}
 
-  // Open/Close button released
-  if (openReleased || closeReleased) {
-    if (currentMode == MANUAL || currentMode == CONFIG_OPEN || currentMode == CONFIG_CLOSE) {
-      if (motorState == MOTOR_MANUAL) {
-        motorState = MOTOR_IDLE;
-        motorBrake();
-        motorStandby();
+// Check if the button is currently held
+bool isButtonHeld(uint8_t pin) {
+  for (int i = 0; i < numButtons; ++i) {
+    if (buttons[i].pin == pin) {
+      return buttons[i].state == ButtonInputState::HELD;
+    }
+  }
+  return false;
+}
+
+// Check if the button was just released
+bool isButtonReleased(uint8_t pin) {
+  for (int i = 0; i < numButtons; ++i) {
+    if (buttons[i].pin == pin) {
+      if (buttons[i].state == ButtonInputState::RELEASED) {
+        // Transition RELEASED state to IDLE
+        buttons[i].state = ButtonInputState::IDLE;
+        return true;
       }
+      break;
     }
   }
-
-  // Mode button
-  if (modePressed) {
-    modeStartTime = curTime;
-    modeButtonHeld = true;
-  } else if (modeReleased && modeButtonHeld) {
-    // Long press
-    if (curTime - modeStartTime >= HOLD_TIME && (currentMode == NORMAL || currentMode == MANUAL)) {
-      // Normal/Manual -> Config_Open
-      Serial.println("Config Mode");
-      Serial.println("SET OPEN POSITION");
-      currentMode = CONFIG_OPEN;
-      modeStartTime = millis();
-      setLEDStatus(STATUS_CONFIG_OPEN);
-    } else {
-      // Short press
-      switch (currentMode) {
-        // Normal -> Manual
-        case NORMAL:
-          Serial.println("Manual Mode");
-          currentMode = MANUAL;
-          modeStartTime = millis();
-          setLEDStatus(STATUS_MANUAL);
-          break;
-
-        // Manual -> Normal
-        case MANUAL:
-          currentMode = NORMAL;
-          setLEDStatus(STATUS_IDLE);
-          break;
-
-        // Config_Open -> Config_Close
-        case CONFIG_OPEN:
-          savePosition(encoder.getPosition(), 1);
-          currentMode = CONFIG_CLOSE;
-          modeStartTime = millis();
-          Serial.println("SET CLOSE POSITION");
-          setLEDStatus(STATUS_CONFIG_CLOSE);
-          break;
-
-        // Config_Close -> Normal
-        case CONFIG_CLOSE:
-          savePosition(encoder.getPosition(), 0);
-          currentMode = NORMAL;
-          setLEDStatus(STATUS_IDLE);
-          break;
-      }
-    }
-    modeButtonHeld = false;
-  }
-
-  // Update previous states
-  lastOpenState = openState;
-  lastCloseState = closeState;
-  lastModeState = modeState;
-}
-
-bool getDebouncedOpen() {
-  return openState;
-}
-
-bool getDebouncedClose() {
-  return closeState;
-}
-
-bool getDebouncedMode() {
-  return modeState;
+  return false;
 }
