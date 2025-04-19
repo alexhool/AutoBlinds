@@ -13,6 +13,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/portmacro.h"
 
+// Get number of PCNT units available
 #if CONFIG_IDF_TARGET_ESP32
     #define MAX_ESP32_ENCODERS 8
 #elif CONFIG_IDF_TARGET_ESP32S2
@@ -58,7 +59,7 @@ public:
   // Set encoder type
   void setEncoderType(EncoderType type);
 
-  // Set pull resistors
+  // Set internal pull resistors
   void setPullResistors(PullType type);
 
   // Set glitch filter time

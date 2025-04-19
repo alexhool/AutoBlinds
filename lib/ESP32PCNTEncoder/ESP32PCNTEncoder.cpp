@@ -9,13 +9,13 @@
 #include "ESP32PCNTEncoder.h"
 #include "driver/gpio.h"
 
-// Initialize static members
-ESP32PCNTEncoder *ESP32PCNTEncoder::encoders[MAX_ESP32_ENCODERS] = { NULL, };
-portMUX_TYPE ESP32PCNTEncoder::_spinlock = portMUX_INITIALIZER_UNLOCKED;
-
 // Macros for thread safety
 #define _ENTER_CRITICAL() portENTER_CRITICAL_SAFE(&_spinlock)
 #define _EXIT_CRITICAL() portEXIT_CRITICAL_SAFE(&_spinlock)
+
+// Initialize static members
+ESP32PCNTEncoder *ESP32PCNTEncoder::encoders[MAX_ESP32_ENCODERS] = { NULL, };
+portMUX_TYPE ESP32PCNTEncoder::_spinlock = portMUX_INITIALIZER_UNLOCKED;
 
 // Constructor
 ESP32PCNTEncoder::ESP32PCNTEncoder(uint8_t pinA, uint8_t pinB, uint8_t pcntUnit) {
