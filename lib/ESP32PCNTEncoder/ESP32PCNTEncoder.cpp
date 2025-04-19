@@ -1,6 +1,6 @@
 /**
  * ESP32 Encoder Library using PCNT
- * 
+ *
  * Based on ESP32Encoder library by hephaestus.
  * See LICENSE_ESP32Encoder for license details.
  * This notice applies to this file.
@@ -277,16 +277,19 @@ bool ESP32PCNTEncoder::_pcntOverflowHandler(pcnt_unit_handle_t unit, const pcnt_
   if (enc) {
     _ENTER_CRITICAL();
     int value;
-    pcnt_unit_get_count(unit, &value);  // Get current count value
+    // Get current count value
+    pcnt_unit_get_count(unit, &value);
 
-    if (edata->watch_point_value == INT16_MIN) { 
+    if (edata->watch_point_value == INT16_MIN) {
       // Underflow
       enc->_count += INT16_MIN;
-    } else if (edata->watch_point_value == INT16_MAX) { 
+    } else if (edata->watch_point_value == INT16_MAX) {
       // Overflow
       enc->_count += INT16_MAX;
     }
     _EXIT_CRITICAL();
   }
-  return true;  // Keep ISR active
+
+  // Keep ISR active
+  return true;
 }

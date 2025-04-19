@@ -13,7 +13,7 @@ enum class ButtonState {
 // Button state information
 struct ButtonInfo {
   const uint8_t pin;              // GPIO pin number
-  ButtonState state;         // Current debounced state
+  ButtonState state;              // Current debounced state
   bool lastReading;               // Last raw reading
   unsigned long lastStateTime;    // Time of last state change
   unsigned long pressStartTime;   // Time of initial press

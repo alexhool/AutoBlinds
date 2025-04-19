@@ -31,7 +31,7 @@ void setupTof() {
 bool isTofTriggered() {
   uint16_t distance = tof.readRangeContinuousMillimeters();
   unsigned long currentTime = millis();
-  bool isTriggered = false; // Default to not detected
+  bool isTriggered = false;
   bool trigger = false;
 
   // Object detected if within threshold

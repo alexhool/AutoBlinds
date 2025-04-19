@@ -1,6 +1,6 @@
 /**
  * ESP32 Encoder Library using PCNT
- * 
+ *
  * Based on ESP32Encoder library by hephaestus.
  * See LICENSE_ESP32Encoder for license details.
  * This notice applies to this file.
@@ -37,7 +37,7 @@
 // Encoder type options
 enum class EncoderType {
   FULL_QUAD,    // Default
-  HALF_QUAD,    
+  HALF_QUAD,
   SINGLE_EDGE
 };
 
