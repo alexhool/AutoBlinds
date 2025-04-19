@@ -1,45 +1,61 @@
 #include "tof.h"
-#include "config.h"
+#include <Arduino.h>
 #include <VL53L0X.h>
-#include <Wire.h>
+#include "config.h"
 
 static VL53L0X tof;
-static unsigned long lastWaveTime = 0;
+static bool wasTriggered = false;
+static unsigned long lastTriggerTime = 0;
 
-// Initialize ToF sensor
-void tofInit() {
+// Initialize ToF sensor via I2C
+void setupTof() {
   Serial.print("Initializing ToF...");
 
-  Wire.begin(I2C_SDA, I2C_SCL);
-  tof.setTimeout(100); // gives up after 100ms
+  // Initialize I2C communication
+  Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
+  // Set sensor timeout (ms)
+  tof.setTimeout(500);
   while (!tof.init()) {
     Serial.print(".");
-    delay(250);
   }
-  tof.setMeasurementTimingBudget(20000); // 20ms measurement time
+  // Set single measurement time (us)
+  tof.setMeasurementTimingBudget(50000);
+  // Start continuous measurements
   tof.startContinuous();
 
   Serial.println("Done");
 }
 
-// Detect wave
-bool tofWave() {
-  if (currentMode != NORMAL) {
-    return false;
+// Detect if an object just appeared within the threshold distance
+bool isTofTriggered() {
+  uint16_t distance = tof.readRangeContinuousMillimeters();
+  unsigned long currentTime = millis();
+  bool isTriggered = false; // Default to not detected
+  bool trigger = false;
+
+  // Check if a timeout occurred during the reading
+  if (tof.timeoutOccurred()) {
+    // No object detected
+    isTriggered = false;
+  } else {
+    // Object detected if within threshold
+    isTriggered = (distance < TOF_THRESHOLD && distance > 0);
+    Serial.printf("ToF: %d mm, Present: %d\n", distance, isTriggered);
   }
 
-  unsigned long curTime = millis();
-
-  // Debounce wave detection
-  if (curTime - lastWaveTime < WAVE_DEBOUNCE) {
-    return false;
+  // Debounce object detection
+  if (currentTime - lastTriggerTime < TOF_DEBOUNCE) {
+    // Check if object just appeared
+    if (isTriggered && !wasTriggered) {
+      trigger = true;
+      // Store current time for next call
+      lastTriggerTime = currentTime;
+      Serial.println("ToF Triggered");
+    }
   }
 
-  // Check if distance is in range
-  if (tof.readRangeContinuousMillimeters() < WAVE_DISTANCE) {
-    lastWaveTime = curTime;
-    return true;
-  }
+  // Store current state for next call
+  wasTriggered = isTriggered;
 
-  return false;
+  return trigger;
 }
