@@ -4,33 +4,32 @@
 #include <cstdint>
 
 // Pin definitions
-extern const uint8_t PIN_BTN_OPEN;
-extern const uint8_t PIN_BTN_CLOSE;
-extern const uint8_t PIN_BTN_MODE;
+constexpr uint8_t PIN_BTN_OPEN = 19;
+constexpr uint8_t PIN_BTN_MODE = 12;
+constexpr uint8_t PIN_BTN_CLOSE = 18;
 
-extern const uint8_t PIN_MTR_IN1;
-extern const uint8_t PIN_MTR_IN2;
-extern const uint8_t PIN_MTR_PWM;
-extern const uint8_t PIN_MTR_STBY;
+constexpr uint8_t PIN_MTR_IN1 = 22;
+constexpr uint8_t PIN_MTR_IN2 = 21;
+constexpr uint8_t PIN_MTR_PWM = 20;
+constexpr uint8_t PIN_MTR_STBY = 23;
+constexpr uint8_t PIN_ENC_A = 11;
+constexpr uint8_t PIN_ENC_B = 10;
+constexpr uint8_t ENC_PCNT = 0;
 
-extern const uint8_t PIN_ENC_A;
-extern const uint8_t PIN_ENC_B;
-extern const uint8_t ENC_PCNT;
-
-extern const uint8_t PIN_I2C_SDA;
-extern const uint8_t PIN_I2C_SCL;
+constexpr uint8_t PIN_I2C_SDA = 6;
+constexpr uint8_t PIN_I2C_SCL = 7;
 
 // System constants
-extern const uint32_t BTN_DEBOUNCE;
-extern const uint32_t CONFIG_HOLD_TIME;
-extern const uint32_t MANUAL_TIMEOUT;
-extern const uint32_t CONFIG_TIMEOUT;
+constexpr uint32_t BTN_DEBOUNCE = 50;
+constexpr uint32_t CONFIG_HOLD_TIME = 3000;
+constexpr uint32_t MANUAL_TIMEOUT = 30000;
+constexpr uint32_t CONFIG_TIMEOUT = 60000;
 
-extern const int MOTOR_DEFAULT_SPEED;
-extern const int MOTOR_CONFIG_SPEED;
-extern const int64_t POS_TOLERANCE;
+constexpr int MOTOR_DEFAULT_SPEED = 150;
+constexpr int MOTOR_CONFIG_SPEED = 75;
+constexpr int64_t POS_TOLERANCE = 15;
 
-extern const uint16_t TOF_THRESHOLD;
-extern const uint32_t TOF_DEBOUNCE;
+constexpr uint16_t TOF_THRESHOLD = 25;
+constexpr uint32_t TOF_DEBOUNCE = 1000;
 
 #endif // CONFIG_H
