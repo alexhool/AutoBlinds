@@ -34,18 +34,11 @@ bool isTofTriggered() {
   bool isTriggered = false; // Default to not detected
   bool trigger = false;
 
-  // Check if a timeout occurred during the reading
-  if (tof.timeoutOccurred()) {
-    // No object detected
-    isTriggered = false;
-  } else {
-    // Object detected if within threshold
-    isTriggered = (distance < TOF_THRESHOLD && distance > 0);
-    Serial.printf("ToF: %d mm, Present: %d\n", distance, isTriggered);
-  }
+  // Object detected if within threshold
+  isTriggered = (!tof.timeoutOccurred() && distance < TOF_THRESHOLD && distance > 0);
 
   // Debounce object detection
-  if (currentTime - lastTriggerTime < TOF_DEBOUNCE) {
+  if ((currentTime - lastTriggerTime) > TOF_DEBOUNCE) {
     // Check if object just appeared
     if (isTriggered && !wasTriggered) {
       trigger = true;
