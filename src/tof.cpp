@@ -20,7 +20,7 @@ void setupTof() {
     delay(100);
   }
   // Set single measurement time (us)
-  tof.setMeasurementTimingBudget(50000);
+  tof.setMeasurementTimingBudget(40000);
   // Start continuous measurements
   tof.startContinuous();
 
@@ -35,7 +35,7 @@ bool isTofTriggered() {
   bool trigger = false;
 
   // Object detected if within threshold
-  isTriggered = (!tof.timeoutOccurred() && distance < TOF_THRESHOLD && distance > 0);
+  isTriggered = (distance < TOF_THRESHOLD);
 
   // Debounce object detection
   if ((currentTime - lastTriggerTime) > TOF_DEBOUNCE) {

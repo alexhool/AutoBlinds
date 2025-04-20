@@ -21,15 +21,15 @@ constexpr uint8_t PIN_I2C_SCL = 7;
 
 // System constants
 constexpr uint32_t BTN_DEBOUNCE = 50;
-constexpr uint32_t CONFIG_HOLD_TIME = 3000;
-constexpr uint32_t MANUAL_TIMEOUT = 30000;
-constexpr uint32_t CONFIG_TIMEOUT = 60000;
+constexpr uint32_t CONFIG_HOLD_TIME = 2000;
+constexpr uint32_t MANUAL_TIMEOUT = 15000;
+constexpr uint32_t CONFIG_TIMEOUT = 30000;
 
 constexpr int MOTOR_DEFAULT_SPEED = 150;
 constexpr int MOTOR_CONFIG_SPEED = 75;
-constexpr int64_t POS_TOLERANCE = 30;
+constexpr int64_t POS_TOLERANCE = 40;
 
 constexpr uint16_t TOF_THRESHOLD = 25;
-constexpr uint32_t TOF_DEBOUNCE = 1000;
+constexpr uint32_t TOF_DEBOUNCE = 400;
 
 #endif // CONFIG_H
