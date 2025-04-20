@@ -8,7 +8,7 @@
 void setup() {
   rgbLedWrite(RGB_BUILTIN, 0, 0, 255);
   Serial.begin(115200);
-  delay(1000);
+  delay(500);
 
   Serial.println("\n--- Setup ---");
 
@@ -19,7 +19,7 @@ void setup() {
   setupTof();
   setupStates();
 
-  Serial.printf("\n--- Program ---\n");
+  Serial.printf("\n--- Loop ---\n");
 }
 
 void loop() {
