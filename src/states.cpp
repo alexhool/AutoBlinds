@@ -55,7 +55,8 @@ static int64_t tempClosePos = 0;
 static unsigned long lastActivityTime = 0;
 
 // Button state variables
-static bool ignoreModeRelease = false;
+static bool ignoreModeConfigRelease = false;
+static bool ignoreModeManualRelease = false;
 static bool ignoreOpenRelease = false;
 static bool ignoreCloseRelease = false;
 
@@ -80,7 +81,7 @@ void setupStates() {
   enterState(SystemState::TOGGLE_IDLE);
 
   Serial.println("Done");
-  Serial.printf("(Loaded positions: Open = %lld, Close = %lld)\n", openPos, closePos);
+  Serial.printf("\nLoaded Positions: Open = %lld, Close = %lld\n", openPos, closePos);
 }
 
 // Handle system state transitions and logic
@@ -114,7 +115,7 @@ void updateStateMachine() {
   }
 
   // Update LED based on current state after handling
-  updateLedIndicator(currentState); // maybe move before switch?
+  updateLedIndicator(currentState);
 }
 
 // Transition to a new state and update LED
@@ -136,7 +137,7 @@ static void enterState(SystemState newState) {
         motorStop();
         tempOpenPos = 0;
         tempClosePos = 0;
-        ignoreModeRelease = true;
+        ignoreModeConfigRelease = true;
         break;
       case SystemState::CONFIG_CLOSE:
         Serial.println("Set CLOSE Limit");
@@ -161,6 +162,8 @@ static void enterState(SystemState newState) {
 // Move motor to new target position
 static void startMovingTo(int64_t newTarget) {
   int64_t currentPos = encoder.getPosition();
+  int motorSpeed = 0;
+  SystemState nextState = currentState;
   targetPos = newTarget;
 
   // Check if already at target
@@ -172,16 +175,8 @@ static void startMovingTo(int64_t newTarget) {
     return;
   }
 
-  int motorSpeed = 0;
-  SystemState nextState = currentState;
   // Determine motor direction
-  if (targetPos > currentPos) {
-    motorSpeed = MOTOR_DEFAULT_SPEED;
-    Serial.printf("Moving to %lld (current: %lld)\n", targetPos, currentPos);
-  } else {
-    motorSpeed = -MOTOR_DEFAULT_SPEED;
-    Serial.printf("Moving to %lld (current: %lld)\n", targetPos, currentPos);
-  }
+  motorSpeed = (targetPos > currentPos) ? MOTOR_DEFAULT_SPEED : -MOTOR_DEFAULT_SPEED;
 
   // Determine next state based on target position
   if (newTarget == openPos && currentState == SystemState::TOGGLE_IDLE) {
@@ -189,13 +184,14 @@ static void startMovingTo(int64_t newTarget) {
   } else if (newTarget == closePos && currentState == SystemState::TOGGLE_IDLE) {
     nextState = SystemState::TOGGLE_CLOSE;
   } else {
-    Serial.printf("ERROR: startMovingTo(%lld) from state %d\n", newTarget, (int)currentState);
+    Serial.printf("ERROR: startMovingTo(%lld) From State %d\n", newTarget, (int)currentState);
     motorStop();
     enterState(SystemState::ERROR);
     return;
   }
 
   // Move motor
+  Serial.printf("Moving to %lld (Current: %lld)\n", targetPos, currentPos);
   motorMove(motorSpeed);
   if (nextState != currentState) {
     enterState(nextState);
@@ -290,17 +286,25 @@ static void handleToggleModeIdle() {
 // Handle logic for TOGGLE_OPEN/TOGGLE_CLOSE states
 static void handleToggleModeMoving() {
   int64_t currentPos = encoder.getPosition();
+  bool stop = false;
+  bool manual = false;
+
   // Check if already at target
   if (abs(currentPos - targetPos) <= POS_TOLERANCE) {
     motorStop();
-    Serial.printf("Moved to %lld  (current: %lld)\n", targetPos, currentPos);
+    Serial.printf("Moved to %lld  (Current: %lld)\n", targetPos, currentPos);
     enterState(SystemState::TOGGLE_IDLE);
     return;
   }
 
-  bool stop = false;
-  // Check for interruption by opposite button press
-  if (currentState == SystemState::TOGGLE_OPEN && isButtonPressed(PIN_BTN_CLOSE)) {
+  // Check for interruption by mode button
+  if (isButtonPressed(PIN_BTN_MODE)) {
+    ignoreModeManualRelease = true;
+    stop = true;
+    manual = true;
+  }
+  // Check for interruption by opposite button
+  else if (currentState == SystemState::TOGGLE_OPEN && isButtonPressed(PIN_BTN_CLOSE)) {
     ignoreCloseRelease = true;
     stop = true;
   } else if (currentState == SystemState::TOGGLE_CLOSE && isButtonPressed(PIN_BTN_OPEN)) {
@@ -314,7 +318,14 @@ static void handleToggleModeMoving() {
 
   if (stop) {
     motorStop();
-    enterState(SystemState::TOGGLE_IDLE);
+    if (manual) {
+      ignoreOpenRelease = false;
+      ignoreCloseRelease = false;
+      enterState(SystemState::MANUAL_IDLE);
+    } else {
+      ignoreModeManualRelease = false;
+      enterState(SystemState::TOGGLE_IDLE);
+    }
   }
 }
 
@@ -322,13 +333,17 @@ static void handleToggleModeMoving() {
 static void handleManualMode() {
   // Check for mode change
   if (isButtonReleased(PIN_BTN_MODE)) {
-    motorStop();
-    enterState(SystemState::TOGGLE_IDLE);
-    return;
+    if (!ignoreModeManualRelease) {
+      motorStop();
+      enterState(SystemState::TOGGLE_IDLE);
+      return;
+    }
+    ignoreModeManualRelease = false;
   }
 
   // Check for Idle state timeout
   if (currentState == SystemState::MANUAL_IDLE && (millis() - lastActivityTime) > MANUAL_TIMEOUT) {
+    ignoreModeManualRelease = false;
     enterState(SystemState::TOGGLE_IDLE);
     return;
   }
@@ -350,8 +365,8 @@ static void handleConfigSetting() {
   // Check for Config mode timeout
   if ((millis() - lastActivityTime) > CONFIG_TIMEOUT) {
     motorStop();
+    ignoreModeConfigRelease = false;
     enterState(SystemState::TOGGLE_IDLE);
-    ignoreModeRelease = false;
     return;
   }
 
@@ -361,8 +376,8 @@ static void handleConfigSetting() {
   // Check for state change
   if (isButtonReleased(PIN_BTN_MODE)) {
     // Ignore first mode button release
-    if (ignoreModeRelease) {
-      ignoreModeRelease = false;
+    if (ignoreModeConfigRelease) {
+      ignoreModeConfigRelease = false;
       return;
     }
     motorStop();
@@ -382,7 +397,7 @@ static void handleConfigModeSaving() {
   savePositions(tempOpenPos, tempClosePos);
   openPos = tempOpenPos;
   closePos = tempClosePos;
-  Serial.printf("(Saved positions: Open = %lld, Close = %lld)\n", openPos, closePos);
+  Serial.printf("Saved Positions: Open = %lld, Close = %lld\n", openPos, closePos);
   enterState(SystemState::TOGGLE_IDLE);
 }
 
