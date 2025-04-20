@@ -15,6 +15,7 @@ void setupMotor() {
   pinMode(PIN_MTR_IN2, OUTPUT);
   pinMode(PIN_MTR_PWM, OUTPUT);
   pinMode(PIN_MTR_STBY, OUTPUT);
+  digitalWrite(PIN_MTR_STBY, HIGH);
   motorStop();
 
   // Set glitch filter time to ignore noise (ns)
@@ -33,15 +34,11 @@ void setupMotor() {
 
 // Move the motor at a given speed (-255 to 255)
 void motorMove(int speed) {
-  // Stop and enter standby if speed is 0
+  // Stop motor if speed is 0
   if (speed == 0) {
     motorStop();
     return;
   }
-
-  // Take driver out of standby
-  digitalWrite(PIN_MTR_STBY, HIGH);
-  delayMicroseconds(10);
 
   // Determine direction and set PWM
   if (speed > 0) {
@@ -57,12 +54,10 @@ void motorMove(int speed) {
   }
 }
 
-// Stop motor rotation and put driver in low-power standby
+// Stop motor rotation
 void motorStop() {
-  // Set IN pins the same for high impedance
-  digitalWrite(PIN_MTR_IN1, LOW);
-  digitalWrite(PIN_MTR_IN2, LOW);
+  // Set IN pins to HIGH for brake mode
+  digitalWrite(PIN_MTR_IN1, HIGH);
+  digitalWrite(PIN_MTR_IN2, HIGH);
   analogWrite(PIN_MTR_PWM, 0);
-  // Set driver to standby mode
-  digitalWrite(PIN_MTR_STBY, LOW);
 }
