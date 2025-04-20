@@ -14,7 +14,7 @@ void setup() {
 
   // Initialize external components
   if (!setupMemory() || !setupMotor() || !setupTof()) {
-    Serial.println("Initialization Failed");
+    Serial.println("\nInitialization Failed");
     while (true) {
       // Blink red
       if ((millis() % 1200) < 800) {
@@ -22,6 +22,7 @@ void setup() {
       } else {
         rgbLedWrite(RGB_BUILTIN, 0, 0, 0);
       }
+      delay(1);
     }
   }
 

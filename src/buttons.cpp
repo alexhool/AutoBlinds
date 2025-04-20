@@ -54,7 +54,8 @@ void updateButtonStates() {
       bool isPressed = (reading == HIGH);
 
       // Compare debounced reading with current state
-      if (isPressed != (buttons[i].state == ButtonState::PRESSED || buttons[i].state == ButtonState::HELD)) {
+      if (isPressed != (buttons[i].state == ButtonState::PRESSED ||
+          buttons[i].state == ButtonState::HELD)) {
         // Button state changed from IDLE/RELEASED
         if (isPressed) {
           buttons[i].state = ButtonState::PRESSED;

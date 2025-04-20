@@ -10,6 +10,6 @@ bool setupMemory();
 void loadPositions(int64_t &openPos, int64_t &closePos);
 
 // Save positions to memory
-void savePositions(int64_t openPos, int64_t closePos);
+bool savePositions(int64_t openPos, int64_t closePos);
 
 #endif // MEMORY_H

@@ -110,7 +110,10 @@ void updateStateMachine() {
       handleConfigModeSaving();
       break;
     case SystemState::ERROR:
+      break;
     default:
+      Serial.printf("ERROR: Updated Invalid State: %d\n", (int)currentState);
+      enterState(SystemState::ERROR);
       break;
   }
 
@@ -132,25 +135,31 @@ static void enterState(SystemState newState) {
       case SystemState::MANUAL_IDLE:
         motorStop();
         break;
+      case SystemState::TOGGLE_OPEN:
+      case SystemState::TOGGLE_CLOSE:
+      case SystemState::MANUAL_MOVE:
+        break;
       case SystemState::CONFIG_OPEN:
-        Serial.println("Set OPEN Limit");
         motorStop();
+        Serial.println("Set OPEN Limit");
         tempOpenPos = 0;
         tempClosePos = 0;
         ignoreModeConfigRelease = true;
         break;
       case SystemState::CONFIG_CLOSE:
-        Serial.println("Set CLOSE Limit");
         motorStop();
+        Serial.println("Set CLOSE Limit");
         break;
       case SystemState::CONFIG_SAVE:
         motorStop();
         break;
       case SystemState::ERROR:
-        Serial.println("ERROR");
         motorStop();
         break;
       default:
+        motorStop();
+        Serial.printf("ERROR: Entered Invalid State: %d\n", (int)newState);
+        enterState(SystemState::ERROR);
         break;
     }
 
@@ -168,7 +177,7 @@ static void startMovingTo(int64_t newTarget) {
 
   // Check if already at target
   if (abs(currentPos - targetPos) <= POS_TOLERANCE) {
-    Serial.println("Already at target position");
+    Serial.println("Already at Target Position");
     if (currentState == SystemState::TOGGLE_OPEN || currentState == SystemState::TOGGLE_CLOSE) {
       enterState(SystemState::TOGGLE_IDLE);
     }
@@ -179,15 +188,19 @@ static void startMovingTo(int64_t newTarget) {
   motorSpeed = (targetPos > currentPos) ? MOTOR_DEFAULT_SPEED : -MOTOR_DEFAULT_SPEED;
 
   // Determine next state based on target position
-  if (newTarget == openPos && currentState == SystemState::TOGGLE_IDLE) {
-    nextState = SystemState::TOGGLE_OPEN;
-  } else if (newTarget == closePos && currentState == SystemState::TOGGLE_IDLE) {
-    nextState = SystemState::TOGGLE_CLOSE;
+  if (currentState == SystemState::TOGGLE_IDLE) {
+    if (newTarget == openPos) {
+      nextState = SystemState::TOGGLE_OPEN;
+    } else if (newTarget == closePos) {
+      nextState = SystemState::TOGGLE_CLOSE;
+    } else {
+      Serial.printf("ERROR: Attempted Move with Invalid Target: %lld\n", newTarget);
+      enterState(SystemState::ERROR);
+      return;
+    }
   } else {
-    Serial.printf("ERROR: startMovingTo(%lld) From State %d\n", newTarget, (int)currentState);
-    motorStop();
+    Serial.printf("ERROR: Attempted Move from Unexpected State: %d\n", (int)currentState);
     enterState(SystemState::ERROR);
-    return;
   }
 
   // Move motor
@@ -286,12 +299,11 @@ static void handleToggleModeIdle() {
 // Handle logic for TOGGLE_OPEN/TOGGLE_CLOSE states
 static void handleToggleModeMoving() {
   int64_t currentPos = encoder.getPosition();
-  bool stop = false;
+  bool toggle = false;
   bool manual = false;
 
   // Check if already at target
   if (abs(currentPos - targetPos) <= POS_TOLERANCE) {
-    motorStop();
     Serial.printf("Moved to %lld  (Current: %lld)\n", targetPos, currentPos);
     enterState(SystemState::TOGGLE_IDLE);
     return;
@@ -300,32 +312,28 @@ static void handleToggleModeMoving() {
   // Check for interruption by mode button
   if (isButtonPressed(PIN_BTN_MODE)) {
     ignoreModeManualRelease = true;
-    stop = true;
     manual = true;
   }
   // Check for interruption by opposite button
   else if (currentState == SystemState::TOGGLE_OPEN && isButtonPressed(PIN_BTN_CLOSE)) {
     ignoreCloseRelease = true;
-    stop = true;
+    toggle = true;
   } else if (currentState == SystemState::TOGGLE_CLOSE && isButtonPressed(PIN_BTN_OPEN)) {
     ignoreOpenRelease = true;
-    stop = true;
+    toggle = true;
   }
   // Check for ToF trigger interruption
   else if (isTofTriggered()) {
-    stop = true;
+    toggle = true;
   }
 
-  if (stop) {
-    motorStop();
-    if (manual) {
-      ignoreOpenRelease = false;
-      ignoreCloseRelease = false;
-      enterState(SystemState::MANUAL_IDLE);
-    } else {
-      ignoreModeManualRelease = false;
-      enterState(SystemState::TOGGLE_IDLE);
-    }
+  if (toggle) {
+    ignoreModeManualRelease = false;
+    enterState(SystemState::TOGGLE_IDLE);
+  } else if (manual) {
+    ignoreOpenRelease = false;
+    ignoreCloseRelease = false;
+    enterState(SystemState::MANUAL_IDLE);
   }
 }
 
@@ -334,7 +342,6 @@ static void handleManualMode() {
   // Check for mode change
   if (isButtonReleased(PIN_BTN_MODE)) {
     if (!ignoreModeManualRelease) {
-      motorStop();
       enterState(SystemState::TOGGLE_IDLE);
       return;
     }
@@ -364,7 +371,6 @@ static void handleManualMode() {
 static void handleConfigSetting() {
   // Check for Config mode timeout
   if ((millis() - lastActivityTime) > CONFIG_TIMEOUT) {
-    motorStop();
     ignoreModeConfigRelease = false;
     enterState(SystemState::TOGGLE_IDLE);
     return;
@@ -380,7 +386,6 @@ static void handleConfigSetting() {
       ignoreModeConfigRelease = false;
       return;
     }
-    motorStop();
     if (currentState == SystemState::CONFIG_OPEN) {
       tempOpenPos = encoder.getPosition();
       enterState(SystemState::CONFIG_CLOSE);
@@ -394,11 +399,15 @@ static void handleConfigSetting() {
 
 // Handle logic for CONFIG_SAVE state
 static void handleConfigModeSaving() {
-  savePositions(tempOpenPos, tempClosePos);
-  openPos = tempOpenPos;
-  closePos = tempClosePos;
-  Serial.printf("Saved Positions: Open = %lld, Close = %lld\n", openPos, closePos);
-  enterState(SystemState::TOGGLE_IDLE);
+  if (savePositions(tempOpenPos, tempClosePos)) {
+    openPos = tempOpenPos;
+    closePos = tempClosePos;
+    Serial.printf("Saved Positions: Open = %lld, Close = %lld\n", openPos, closePos);
+    enterState(SystemState::TOGGLE_IDLE);
+  } else {
+    Serial.println("ERROR: Failed to Save Positions");
+    enterState(SystemState::ERROR);
+  }
 }
 
 // Map system states to LED status
@@ -454,7 +463,7 @@ static void updateLedIndicator(SystemState systemState) {
     case STATUS_MANUAL: {
       float pulse_norm = (sin(currentTime / 500.0f * M_PI) + 1.0f) / 2.0f;
       uint8_t brightness = 30 + (uint8_t)(pulse_norm * 180);
-      rgbLedWrite(RGB_BUILTIN, brightness, (uint8_t)(brightness * 165.0 / 255.0), 0); // Breathe Orange
+      rgbLedWrite(RGB_BUILTIN, brightness, (uint8_t)(brightness * 165.0 / 255.0), 0);
       break;
     }
     // Fade green/white
