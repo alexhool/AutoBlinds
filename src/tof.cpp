@@ -8,16 +8,23 @@ static bool wasTriggered = false;
 static unsigned long lastTriggerTime = 0;
 
 // Initialize ToF sensor via I2C
-void setupTof() {
+bool setupTof() {
   Serial.print("Initializing ToF...");
 
   // Initialize I2C communication
   Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
   // Set sensor timeout (ms)
   tof.setTimeout(500);
-  while (!tof.init()) {
+  // Attempt to start ToF sensor
+  uint8_t attempts = 10;
+  while (!tof.init() && attempts > 0) {
+    attempts--;
     Serial.print(".");
-    delay(100);
+    delay(500);
+  }
+  if (attempts == 0) {
+    Serial.println("Failed");
+    return false;
   }
   // Set single measurement time (us)
   tof.setMeasurementTimingBudget(40000);
@@ -25,6 +32,7 @@ void setupTof() {
   tof.startContinuous();
 
   Serial.println("Done");
+  return true;
 }
 
 // Detect if an object just appeared within the threshold distance
@@ -35,7 +43,7 @@ bool isTofTriggered() {
   bool trigger = false;
 
   // Object detected if within threshold
-  isTriggered = (distance < TOF_THRESHOLD);
+  isTriggered = (!tof.timeoutOccurred() && distance < TOF_THRESHOLD);
 
   // Debounce object detection
   if ((currentTime - lastTriggerTime) > TOF_DEBOUNCE) {

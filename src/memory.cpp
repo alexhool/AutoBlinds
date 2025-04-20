@@ -5,13 +5,16 @@
 static Preferences memory;
 
 // Initialize nonvolatile flash memory
-void setupMemory() {
+bool setupMemory() {
   Serial.print("Initializing Memory...");
 
   // Start the Preferences library
-  memory.begin("AutoBlinds", false);
-
+  if (!memory.begin("AutoBlinds", false)) {
+    Serial.println("Failed");
+    return false;
+  }
   Serial.println("Done");
+  return true;
 }
 
 // Load open and close positions from flash memory

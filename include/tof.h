@@ -2,7 +2,7 @@
 #define TOF_H
 
 // Initialize ToF sensor
-void setupTof();
+bool setupTof();
 
 // Detect object presence
 bool isTofTriggered();

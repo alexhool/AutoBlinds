@@ -7,7 +7,7 @@
 ESP32PCNTEncoder encoder(PIN_ENC_A, PIN_ENC_B, ENC_PCNT);
 
 // Initialize motor driver GPIO and encoder
-void setupMotor() {
+bool setupMotor() {
   Serial.print("Initializing Motor...");
 
   // Set motor driver pins as outputs
@@ -22,14 +22,22 @@ void setupMotor() {
   encoder.setFilterNs(10000);
   // Set encoder type to full quadrature (4 PPR)
   encoder.setEncoderType(EncoderType::FULL_QUAD);
-  while (!encoder.begin()) {
+  // Attempt to start encoder counting
+  uint8_t attempts = 10;
+  while (!encoder.begin() && attempts > 0) {
+    attempts--;
     Serial.print(".");
-    delay(100);
+    delay(500);
+  }
+  if (attempts == 0) {
+    Serial.println("Failed");
+    return false;
   }
   // Start count from 0
   encoder.resetPosition();
 
   Serial.println("Done");
+  return true;
 }
 
 // Move the motor at a given speed (-255 to 255)

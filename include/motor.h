@@ -8,7 +8,7 @@ class ESP32PCNTEncoder;
 extern ESP32PCNTEncoder encoder;
 
 // Initialize motor driver pins and encoder
-void setupMotor();
+bool setupMotor();
 
 // Move the motor at a given speed (-255 to 255)
 void motorMove(int speed);

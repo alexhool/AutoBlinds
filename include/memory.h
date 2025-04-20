@@ -4,7 +4,7 @@
 #include <cstdint>
 
 // Initialize nonvolatile memory
-void setupMemory();
+bool setupMemory();
 
 // Load positions from memory
 void loadPositions(int64_t &openPos, int64_t &closePos);
