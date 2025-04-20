@@ -120,7 +120,7 @@ void updateStateMachine() {
 // Transition to a new state and update LED
 static void enterState(SystemState newState) {
   if (newState != currentState) {
-    Serial.printf("State Change: %d -> %d\n", (int)currentState, (int)newState);
+    Serial.printf("\nState Change: %d -> %d\n", (int)currentState, (int)newState);
     previousState = currentState;
     currentState = newState;
     lastActivityTime = millis();
@@ -293,7 +293,7 @@ static void handleToggleModeMoving() {
   // Check if already at target
   if (abs(currentPos - targetPos) <= POS_TOLERANCE) {
     motorStop();
-    Serial.printf("Target position %lld reached (current: %lld)\n", targetPos, currentPos);
+    Serial.printf("Moved to %lld  (current: %lld)\n", targetPos, currentPos);
     enterState(SystemState::TOGGLE_IDLE);
     return;
   }
