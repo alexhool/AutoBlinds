@@ -44,7 +44,7 @@ bool isTofTriggered() {
       trigger = true;
       // Store current time for next call
       lastTriggerTime = currentTime;
-      Serial.println("ToF Triggered");
+      Serial.printf("ToF Triggered: %u mm\n", distance);
     }
   }
 
