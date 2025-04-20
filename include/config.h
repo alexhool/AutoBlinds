@@ -27,7 +27,7 @@ constexpr uint32_t CONFIG_TIMEOUT = 60000;
 
 constexpr int MOTOR_DEFAULT_SPEED = 150;
 constexpr int MOTOR_CONFIG_SPEED = 75;
-constexpr int64_t POS_TOLERANCE = 15;
+constexpr int64_t POS_TOLERANCE = 30;
 
 constexpr uint16_t TOF_THRESHOLD = 25;
 constexpr uint32_t TOF_DEBOUNCE = 1000;

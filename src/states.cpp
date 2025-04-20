@@ -16,15 +16,15 @@
 
 // System operational states
 enum class SystemState {
-  TOGGLE_IDLE,    // Default
-  TOGGLE_OPEN,
-  TOGGLE_CLOSE,
-  MANUAL_IDLE,
-  MANUAL_MOVE,
-  CONFIG_OPEN,
-  CONFIG_CLOSE,
-  CONFIG_SAVE,
-  ERROR
+  TOGGLE_IDLE,    // 0 - Default
+  TOGGLE_OPEN,    // 1
+  TOGGLE_CLOSE,   // 2
+  MANUAL_IDLE,    // 3
+  MANUAL_MOVE,    // 4
+  CONFIG_OPEN,    // 5
+  CONFIG_CLOSE,   // 6
+  CONFIG_SAVE,    // 7
+  ERROR           // 8
 };
 
 // LED status states
@@ -54,6 +54,11 @@ static int64_t tempOpenPos = 0;
 static int64_t tempClosePos = 0;
 static unsigned long lastActivityTime = 0;
 
+// Button state variables
+static bool ignoreModeRelease = false;
+static bool ignoreOpenRelease = false;
+static bool ignoreCloseRelease = false;
+
 // LED control variables
 static LEDStatus currentLEDStatus = STATUS_TOGGLE_IDLE;
 static unsigned long statusStartTime = 0;
@@ -75,7 +80,7 @@ void setupStates() {
   enterState(SystemState::TOGGLE_IDLE);
 
   Serial.println("Done");
-  Serial.printf("(Loaded positions: Open=%lld, Close=%lld)\n", openPos, closePos);
+  Serial.printf("(Loaded positions: Open = %lld, Close = %lld)\n", openPos, closePos);
 }
 
 // Handle system state transitions and logic
@@ -131,19 +136,20 @@ static void enterState(SystemState newState) {
         motorStop();
         tempOpenPos = 0;
         tempClosePos = 0;
+        ignoreModeRelease = true;
         break;
       case SystemState::CONFIG_CLOSE:
         Serial.println("Set CLOSE Limit");
         motorStop();
         break;
       case SystemState::CONFIG_SAVE:
-        Serial.println("Saved Positions");
         motorStop();
         break;
-      case SystemState::ERROR: // maybe not needed?
-      default:
-        Serial.println("Entered ERROR state");
+      case SystemState::ERROR:
+        Serial.println("ERROR");
         motorStop();
+        break;
+      default:
         break;
     }
 
@@ -166,23 +172,24 @@ static void startMovingTo(int64_t newTarget) {
     return;
   }
 
-  // Determine motor direction
   int motorSpeed = 0;
   SystemState nextState = currentState;
-  if (newTarget == openPos) {
-    Serial.println("Opening Blinds");
+  // Determine motor direction
+  if (targetPos > currentPos) {
     motorSpeed = MOTOR_DEFAULT_SPEED;
-    if (currentState == SystemState::TOGGLE_IDLE) {
-      nextState = SystemState::TOGGLE_OPEN;
-    }
-  } else if (newTarget == closePos) {
-    Serial.println("Closing Blinds");
-    motorSpeed = -MOTOR_DEFAULT_SPEED;
-    if (currentState == SystemState::TOGGLE_IDLE) {
-      nextState = SystemState::TOGGLE_CLOSE;
-    }
+    Serial.printf("Moving to %lld (current: %lld)\n", targetPos, currentPos);
   } else {
-    Serial.printf("ERROR: startMovingTo(%lld)\n", newTarget);
+    motorSpeed = -MOTOR_DEFAULT_SPEED;
+    Serial.printf("Moving to %lld (current: %lld)\n", targetPos, currentPos);
+  }
+
+  // Determine next state based on target position
+  if (newTarget == openPos && currentState == SystemState::TOGGLE_IDLE) {
+    nextState = SystemState::TOGGLE_OPEN;
+  } else if (newTarget == closePos && currentState == SystemState::TOGGLE_IDLE) {
+    nextState = SystemState::TOGGLE_CLOSE;
+  } else {
+    Serial.printf("ERROR: startMovingTo(%lld) from state %d\n", newTarget, (int)currentState);
     motorStop();
     enterState(SystemState::ERROR);
     return;
@@ -203,24 +210,23 @@ static bool handleMotorMovement(int speed) {
   bool closeHeld = isButtonHeld(PIN_BTN_CLOSE);
   bool moving = false;
 
-  // Open blinds
+  // Postive direction
   if (openHeld && !closeHeld) {
     motorMove(speed);
     lastActivityTime = currentTime;
     moving = true;
   }
-  // Close blinds
+  // Negative direction
   else if (closeHeld && !openHeld) {
     motorMove(-speed);
     lastActivityTime = currentTime;
     moving = true;
   }
-  // Stop blinds
+  // Stop movement
   else {
     motorStop();
     if (isButtonPressed(PIN_BTN_OPEN) || isButtonReleased(PIN_BTN_OPEN) ||
-        isButtonPressed(PIN_BTN_CLOSE) || isButtonReleased(PIN_BTN_CLOSE) ||
-        isButtonPressed(PIN_BTN_MODE) || isButtonReleased(PIN_BTN_MODE)) {
+        isButtonPressed(PIN_BTN_CLOSE) || isButtonReleased(PIN_BTN_CLOSE)) {
       lastActivityTime = currentTime;
     }
     moving = false;
@@ -237,18 +243,30 @@ static void handleToggleModeIdle() {
     return;
   }
   if (isButtonReleased(PIN_BTN_MODE)) {
+    ignoreOpenRelease = false;
+    ignoreCloseRelease = false;
     enterState(SystemState::MANUAL_IDLE);
     return;
   }
 
-  // Check for button releases
+  // Check for open button release
   if (isButtonReleased(PIN_BTN_OPEN)) {
-    startMovingTo(openPos);
-    return;
+    if (!ignoreOpenRelease) {
+      ignoreCloseRelease = false;
+      startMovingTo(openPos);
+      return;
+    }
+    ignoreOpenRelease = false;
   }
+
+  // Check for close button release
   if (isButtonReleased(PIN_BTN_CLOSE)) {
-    startMovingTo(closePos);
-    return;
+    if (!ignoreCloseRelease) {
+      ignoreOpenRelease = false;
+      startMovingTo(closePos);
+      return;
+    }
+    ignoreCloseRelease = false;
   }
 
   // Check for ToF trigger
@@ -280,10 +298,21 @@ static void handleToggleModeMoving() {
     return;
   }
 
-  // Check for interruption by opposite button or ToF trigger
-  if ((currentState == SystemState::TOGGLE_OPEN && isButtonPressed(PIN_BTN_CLOSE)) ||
-      (currentState == SystemState::TOGGLE_CLOSE && isButtonPressed(PIN_BTN_OPEN)) ||
-      isTofTriggered()) {
+  bool stop = false;
+  // Check for interruption by opposite button press
+  if (currentState == SystemState::TOGGLE_OPEN && isButtonPressed(PIN_BTN_CLOSE)) {
+    ignoreCloseRelease = true;
+    stop = true;
+  } else if (currentState == SystemState::TOGGLE_CLOSE && isButtonPressed(PIN_BTN_OPEN)) {
+    ignoreOpenRelease = true;
+    stop = true;
+  }
+  // Check for ToF trigger interruption
+  else if (isTofTriggered()) {
+    stop = true;
+  }
+
+  if (stop) {
     motorStop();
     enterState(SystemState::TOGGLE_IDLE);
   }
@@ -322,6 +351,7 @@ static void handleConfigSetting() {
   if ((millis() - lastActivityTime) > CONFIG_TIMEOUT) {
     motorStop();
     enterState(SystemState::TOGGLE_IDLE);
+    ignoreModeRelease = false;
     return;
   }
 
@@ -330,6 +360,11 @@ static void handleConfigSetting() {
 
   // Check for state change
   if (isButtonReleased(PIN_BTN_MODE)) {
+    // Ignore first mode button release
+    if (ignoreModeRelease) {
+      ignoreModeRelease = false;
+      return;
+    }
     motorStop();
     if (currentState == SystemState::CONFIG_OPEN) {
       tempOpenPos = encoder.getPosition();
@@ -347,7 +382,7 @@ static void handleConfigModeSaving() {
   savePositions(tempOpenPos, tempClosePos);
   openPos = tempOpenPos;
   closePos = tempClosePos;
-  Serial.printf("(Saved positions: Open=%lld, Close=%lld)\n", openPos, closePos);
+  Serial.printf("(Saved positions: Open = %lld, Close = %lld)\n", openPos, closePos);
   enterState(SystemState::TOGGLE_IDLE);
 }
 
