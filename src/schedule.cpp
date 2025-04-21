@@ -43,6 +43,11 @@ bool setupScheduler() {
   wm.setConnectTimeout(30);
   // Set captive portal timeout (s)
   wm.setConfigPortalTimeout(120);
+  // Configure menu items
+  std::vector<const char *> wm_menu  = {"wifi", "exit"};
+  wm.setShowInfoUpdate(false);
+  wm.setShowInfoErase(false);
+  wm.setMenu(wm_menu);
   wifiConnected = wm.autoConnect(WIFI_AP_NAME, NULL);
   if (!wifiConnected) {
     return false;
@@ -140,7 +145,7 @@ static void checkReconnectWiFi() {
   if (currentStatus != WL_CONNECTED) {
     // Not connected
     if (wifiConnected) {
-      Serial.print("Wi-Fi Disconnected. Attempting Reconnect...\n");
+      Serial.print("Wi-Fi Disconnected\nAttempting Reconnect...\n");
       wifiConnected = false;
       server.end();
     }
