@@ -27,8 +27,7 @@ void loadPositions(int64_t &openPos, int64_t &closePos) {
 
 // Save open and close positions to flash memory
 bool savePositions(int64_t openPos, int64_t closePos) {
-  if (memory.putLong64("openPosition", openPos) == 0 ||
-      memory.putLong64("closePosition", closePos) == 0) {
+  if (memory.putLong64("openPosition", openPos) == 0 || memory.putLong64("closePosition", closePos) == 0) {
     return false;
   }
   return true;

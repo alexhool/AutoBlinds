@@ -42,10 +42,11 @@ static int64_t tempClosePos = 0;
 static unsigned long lastActivityTime = 0;
 
 // Button state variables
-static bool ignoreModeConfigRelease = false;
-static bool ignoreModeManualRelease = false;
 static bool ignoreOpenRelease = false;
 static bool ignoreCloseRelease = false;
+static bool ignoreModeManualRelease = false;
+static bool ignoreModeConfigRelease = false;
+static bool ignoreModeExitRelease = false;
 
 // LED control variables
 static LEDStatus currentLEDStatus = STATUS_TOGGLE_IDLE;
@@ -67,7 +68,7 @@ void setupStates() {
   loadPositions(openPos, closePos);
   int64_t lastPos = loadLastPosition();
   encoder.setPosition(lastPos);
-  
+
   enterState(SystemState::TOGGLE_IDLE);
 
   Serial.print("Done\n");
@@ -137,6 +138,7 @@ void enterState(SystemState newState) {
         tempOpenPos = 0;
         tempClosePos = 0;
         ignoreModeConfigRelease = true;
+        ignoreModeExitRelease = false;
         break;
       case SystemState::CONFIG_CLOSE:
         motorStop();
@@ -240,8 +242,8 @@ static bool handleMotorMovement(int speed) {
   // Stop movement
   else {
     motorStop();
-    if (isButtonPressed(PIN_BTN_OPEN) || isButtonReleased(PIN_BTN_OPEN) ||
-        isButtonPressed(PIN_BTN_CLOSE) || isButtonReleased(PIN_BTN_CLOSE)) {
+    if (isButtonPressed(PIN_BTN_OPEN) || isButtonReleased(PIN_BTN_OPEN) || isButtonPressed(PIN_BTN_CLOSE) ||
+        isButtonReleased(PIN_BTN_CLOSE)) {
       lastActivityTime = currentTime;
     }
     moving = false;
@@ -252,16 +254,28 @@ static bool handleMotorMovement(int speed) {
 
 // Handle logic for TOGGLE_IDLE state
 static void handleToggleModeIdle() {
-  // Check for mode change
-  if (isButtonHeld(PIN_BTN_MODE)) {
-    enterState(SystemState::CONFIG_OPEN);
-    return;
+  bool modeHandled = false;
+
+  // Ignore lingering inputs
+  if (ignoreModeExitRelease) {
+    modeHandled = true;
+    if (!isButtonPressed(PIN_BTN_MODE) && !isButtonHeld(PIN_BTN_MODE) && !isButtonReleased(PIN_BTN_MODE)) {
+        ignoreModeExitRelease = false;
+    }
   }
-  if (isButtonReleased(PIN_BTN_MODE)) {
-    ignoreOpenRelease = false;
-    ignoreCloseRelease = false;
-    enterState(SystemState::MANUAL_IDLE);
-    return;
+
+  // Check for mode change
+  if (!modeHandled) {
+    if (isButtonHeld(PIN_BTN_MODE)) {
+      enterState(SystemState::CONFIG_OPEN);
+      return;
+    }
+    if (isButtonReleased(PIN_BTN_MODE)) {
+      ignoreOpenRelease = false;
+      ignoreCloseRelease = false;
+      enterState(SystemState::MANUAL_IDLE);
+      return;
+    }
   }
 
   // Check for open button release
@@ -375,9 +389,19 @@ static void handleManualMode() {
 
 // Handle logic for CONFIG_OPEN/CONFIG_CLOSE states
 static void handleConfigSetting() {
+  // Hold mode to cancel config
+  if (isButtonHeld(PIN_BTN_MODE)) {
+    if (!ignoreModeConfigRelease) {
+      ignoreModeExitRelease = true;
+      enterState(SystemState::TOGGLE_IDLE);
+      return;
+    }
+  }
+
   // Check for Config mode timeout
   if ((millis() - lastActivityTime) > CONFIG_TIMEOUT) {
     ignoreModeConfigRelease = false;
+    ignoreModeExitRelease = true;
     enterState(SystemState::TOGGLE_IDLE);
     return;
   }
@@ -409,6 +433,7 @@ static void handleConfigModeSaving() {
     openPos = tempOpenPos;
     closePos = tempClosePos;
     Serial.printf("Saved Positions: Open = %lld, Close = %lld\n", openPos, closePos);
+    ignoreModeExitRelease = true;
     enterState(SystemState::TOGGLE_IDLE);
   } else {
     Serial.print("ERROR: Failed to Save Positions\n");

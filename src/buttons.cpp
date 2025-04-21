@@ -54,8 +54,7 @@ void updateButtonStates() {
       bool isPressed = (reading == HIGH);
 
       // Compare debounced reading with current state
-      if (isPressed != (buttons[i].state == ButtonState::PRESSED ||
-          buttons[i].state == ButtonState::HELD)) {
+      if (isPressed != (buttons[i].state == ButtonState::PRESSED || buttons[i].state == ButtonState::HELD)) {
         // Button state changed from IDLE/RELEASED
         if (isPressed) {
           buttons[i].state = ButtonState::PRESSED;
@@ -83,7 +82,7 @@ void updateButtonStates() {
   }
 }
 
-// Check if the button was just pressed
+// Check if the button was just pressed (debounced)
 bool isButtonPressed(uint8_t pin) {
   for (int i = 0; i < numButtons; ++i) {
     if (buttons[i].pin == pin) {
@@ -93,7 +92,7 @@ bool isButtonPressed(uint8_t pin) {
   return false;
 }
 
-// Check if the button is currently held
+// Check if the button is currently held (debounced)
 bool isButtonHeld(uint8_t pin) {
   for (int i = 0; i < numButtons; ++i) {
     if (buttons[i].pin == pin) {
@@ -103,7 +102,7 @@ bool isButtonHeld(uint8_t pin) {
   return false;
 }
 
-// Check if the button was just released
+// Check if the button was just released (debounced)
 bool isButtonReleased(uint8_t pin) {
   for (int i = 0; i < numButtons; ++i) {
     if (buttons[i].pin == pin) {
