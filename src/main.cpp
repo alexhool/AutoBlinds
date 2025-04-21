@@ -4,25 +4,28 @@
 #include "motor.h"
 #include "tof.h"
 #include "states.h"
+#include "schedule.h"
 
 void setup() {
   // Sold blue
   rgbLedWrite(RGB_BUILTIN, 0, 0, 255);
   Serial.begin(115200);
-  delay(500);
-  Serial.println("\n--- Setup ---");
+  Serial.print("\n--- Setup ---\n");
 
   // Initialize external components
+  if (!setupScheduler()) {
+    Serial.print("WARNING: Network Setup Failed - Offline Mode\n");
+  }
   if (!setupMemory() || !setupMotor() || !setupTof()) {
-    Serial.println("\nInitialization Failed");
+    Serial.print("ERROR: Initialization Failed\n");
     while (true) {
-      // Blink red
+      // Blink red on error
       if ((millis() % 1200) < 800) {
         rgbLedWrite(RGB_BUILTIN, 255, 0, 0);
       } else {
         rgbLedWrite(RGB_BUILTIN, 0, 0, 0);
       }
-      delay(1);
+      delay(2);
     }
   }
 
@@ -34,7 +37,16 @@ void setup() {
 }
 
 void loop() {
+  unsigned long currentTime = millis();
+
   // Continuously update system state machine
   updateStateMachine();
-  delay(1);
+
+  // Periodically resync RTC
+  syncRTC();
+
+  // Periodically check schedule
+  checkSchedule();
+
+  delay(2);
 }

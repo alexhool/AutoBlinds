@@ -1,6 +1,7 @@
 #include "memory.h"
 #include <Arduino.h>
 #include <Preferences.h>
+#include "schedule.h"
 
 static Preferences memory;
 
@@ -8,12 +9,12 @@ static Preferences memory;
 bool setupMemory() {
   Serial.print("Initializing Memory...");
 
-  // Start the Preferences library
+  // Start Preferences library
   if (!memory.begin("AutoBlinds", false)) {
-    Serial.println("Failed");
+    Serial.print("Failed\n");
     return false;
   }
-  Serial.println("Done");
+  Serial.print("Done\n");
   return true;
 }
 
@@ -28,6 +29,26 @@ void loadPositions(int64_t &openPos, int64_t &closePos) {
 bool savePositions(int64_t openPos, int64_t closePos) {
   if (memory.putLong64("openPosition", openPos) == 0 ||
       memory.putLong64("closePosition", closePos) == 0) {
+    return false;
+  }
+  return true;
+}
+
+// Load open and close schedule times from flash memory
+void loadSchedule(ScheduleTime &openSched, ScheduleTime &closeSched) {
+  // Defaults to 99 if not present
+  openSched.hour = memory.getInt("openScheduleHour", 99);
+  openSched.minute = memory.getInt("openScheduleMinute", 99);
+  closeSched.hour = memory.getInt("closeScheduleHour", 99);
+  closeSched.minute = memory.getInt("closeScheduleMinute", 99);
+}
+
+// Save open and close schedule times to flash memory
+bool saveSchedule(ScheduleTime openSched, ScheduleTime closeSched) {
+  if (memory.putInt("openScheduleHour", openSched.hour) == 0 ||
+      memory.putInt("openScheduleMinute", openSched.minute) == 0 ||
+      memory.putInt("closeScheduleHour", closeSched.hour) == 0 ||
+      memory.putInt("closeScheduleMinute", closeSched.minute) == 0) {
     return false;
   }
   return true;

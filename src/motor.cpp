@@ -30,13 +30,13 @@ bool setupMotor() {
     delay(500);
   }
   if (attempts == 0) {
-    Serial.println("Failed");
+    Serial.print("Failed\n");
     return false;
   }
   // Start count from 0
   encoder.resetPosition();
 
-  Serial.println("Done");
+  Serial.print("Done\n");
   return true;
 }
 

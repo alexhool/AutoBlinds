@@ -14,19 +14,6 @@
 #define RGB_CYAN 0, 255, 255
 #define RGB_OFF 0, 0, 0
 
-// System operational states
-enum class SystemState {
-  TOGGLE_IDLE,    // 0 - Default
-  TOGGLE_OPEN,    // 1
-  TOGGLE_CLOSE,   // 2
-  MANUAL_IDLE,    // 3
-  MANUAL_MOVE,    // 4
-  CONFIG_OPEN,    // 5
-  CONFIG_CLOSE,   // 6
-  CONFIG_SAVE,    // 7
-  ERROR           // 8
-};
-
 // LED status states
 enum LEDStatus {
   STATUS_TOGGLE_IDLE,   // Default
@@ -65,7 +52,7 @@ static LEDStatus currentLEDStatus = STATUS_TOGGLE_IDLE;
 static unsigned long statusStartTime = 0;
 
 // Forward declarations
-static void enterState(SystemState newState);
+static void startMovingTo(int64_t newTarget);
 static void handleToggleModeIdle();
 static void handleToggleModeMoving();
 static void handleManualMode();
@@ -80,8 +67,8 @@ void setupStates() {
   loadPositions(openPos, closePos);
   enterState(SystemState::TOGGLE_IDLE);
 
-  Serial.println("Done");
-  Serial.printf("\nLoaded Positions: Open = %lld, Close = %lld\n", openPos, closePos);
+  Serial.print("Done\n");
+  Serial.printf("Loaded Positions: Open = %lld, Close = %lld\n", openPos, closePos);
 }
 
 // Handle system state transitions and logic
@@ -122,9 +109,9 @@ void updateStateMachine() {
 }
 
 // Transition to a new state and update LED
-static void enterState(SystemState newState) {
+void enterState(SystemState newState) {
   if (newState != currentState) {
-    Serial.printf("\nState Change: %d -> %d\n", (int)currentState, (int)newState);
+    Serial.printf("State Change: %d -> %d\n", (int)currentState, (int)newState);
     previousState = currentState;
     currentState = newState;
     lastActivityTime = millis();
@@ -141,14 +128,14 @@ static void enterState(SystemState newState) {
         break;
       case SystemState::CONFIG_OPEN:
         motorStop();
-        Serial.println("Set OPEN Limit");
+        Serial.print("Set OPEN Limit\n");
         tempOpenPos = 0;
         tempClosePos = 0;
         ignoreModeConfigRelease = true;
         break;
       case SystemState::CONFIG_CLOSE:
         motorStop();
-        Serial.println("Set CLOSE Limit");
+        Serial.print("Set CLOSE Limit\n");
         break;
       case SystemState::CONFIG_SAVE:
         motorStop();
@@ -168,6 +155,20 @@ static void enterState(SystemState newState) {
   }
 }
 
+// Move to open position from external trigger
+void triggerOpen() {
+  if (currentState == SystemState::TOGGLE_IDLE) {
+    startMovingTo(openPos);
+  }
+}
+
+// Move to close position from external trigger
+void triggerClose() {
+  if (currentState == SystemState::TOGGLE_IDLE) {
+    startMovingTo(closePos);
+  }
+}
+
 // Move motor to new target position
 static void startMovingTo(int64_t newTarget) {
   int64_t currentPos = encoder.getPosition();
@@ -177,7 +178,7 @@ static void startMovingTo(int64_t newTarget) {
 
   // Check if already at target
   if (abs(currentPos - targetPos) <= POS_TOLERANCE) {
-    Serial.println("Already at Target Position");
+    Serial.print("Already at Target Position\n");
     if (currentState == SystemState::TOGGLE_OPEN || currentState == SystemState::TOGGLE_CLOSE) {
       enterState(SystemState::TOGGLE_IDLE);
     }
@@ -405,7 +406,7 @@ static void handleConfigModeSaving() {
     Serial.printf("Saved Positions: Open = %lld, Close = %lld\n", openPos, closePos);
     enterState(SystemState::TOGGLE_IDLE);
   } else {
-    Serial.println("ERROR: Failed to Save Positions");
+    Serial.print("ERROR: Failed to Save Positions\n");
     enterState(SystemState::ERROR);
   }
 }

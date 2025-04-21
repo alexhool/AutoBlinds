@@ -36,7 +36,7 @@ void setupButtons() {
     pinMode(buttons[i].pin, INPUT_PULLDOWN);
   }
 
-  Serial.println("Done");
+  Serial.print("Done\n");
 }
 
 // Handle button state transitions from debounced readings

@@ -3,6 +3,28 @@
 
 #include <cstdint>
 
+// Scheduler constants
+constexpr uint16_t WEB_SERVER_PORT = 80;
+constexpr char WIFI_AP_NAME[] = "AutoBlinds";
+constexpr char NTP_SERVER[] = "pool.ntp.org";
+constexpr char TIME_ZONE[] = "EST5EDT,M3.2.0,M11.1.0";
+constexpr unsigned long NTP_SYNC_INTERVAL = 24 * 3600 * 1000;
+constexpr unsigned long WIFI_CHECK_INTERVAL = 15000;
+constexpr unsigned long SCHEDULE_CHECK_INTERVAL = 50000;
+
+// System constants
+constexpr uint32_t BTN_DEBOUNCE = 50;
+constexpr uint32_t CONFIG_HOLD_TIME = 2000;
+constexpr uint32_t MANUAL_TIMEOUT = 15000;
+constexpr uint32_t CONFIG_TIMEOUT = 30000;
+
+constexpr int MOTOR_DEFAULT_SPEED = 150;
+constexpr int MOTOR_CONFIG_SPEED = 75;
+constexpr int64_t POS_TOLERANCE = 42;
+
+constexpr uint16_t TOF_THRESHOLD = 25;
+constexpr uint32_t TOF_DEBOUNCE = 400;
+
 // Pin definitions
 constexpr uint8_t PIN_BTN_OPEN = 19;
 constexpr uint8_t PIN_BTN_MODE = 12;
@@ -18,18 +40,5 @@ constexpr uint8_t ENC_PCNT = 0;
 
 constexpr uint8_t PIN_I2C_SDA = 6;
 constexpr uint8_t PIN_I2C_SCL = 7;
-
-// System constants
-constexpr uint32_t BTN_DEBOUNCE = 50;
-constexpr uint32_t CONFIG_HOLD_TIME = 2000;
-constexpr uint32_t MANUAL_TIMEOUT = 15000;
-constexpr uint32_t CONFIG_TIMEOUT = 30000;
-
-constexpr int MOTOR_DEFAULT_SPEED = 150;
-constexpr int MOTOR_CONFIG_SPEED = 75;
-constexpr int64_t POS_TOLERANCE = 42;
-
-constexpr uint16_t TOF_THRESHOLD = 25;
-constexpr uint32_t TOF_DEBOUNCE = 400;
 
 #endif // CONFIG_H

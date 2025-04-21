@@ -1,5 +1,6 @@
 #include "tof.h"
 #include <Arduino.h>
+#include <Wire.h>
 #include <VL53L0X.h>
 #include "config.h"
 
@@ -23,7 +24,7 @@ bool setupTof() {
     delay(500);
   }
   if (attempts == 0) {
-    Serial.println("Failed");
+    Serial.print("Failed\n");
     return false;
   }
   // Set single measurement time (us)
@@ -31,19 +32,19 @@ bool setupTof() {
   // Start continuous measurements
   tof.startContinuous();
 
-  Serial.println("Done");
+  Serial.print("Done\n");
   return true;
 }
 
 // Detect if an object just appeared within the threshold distance
 bool isTofTriggered() {
-  uint16_t distance = tof.readRangeContinuousMillimeters();
   unsigned long currentTime = millis();
+  uint16_t distance = tof.readRangeContinuousMillimeters();
   bool isTriggered = false;
   bool trigger = false;
 
   // Object detected if within threshold
-  isTriggered = (!tof.timeoutOccurred() && distance < TOF_THRESHOLD);
+  isTriggered = (!tof.timeoutOccurred() && distance < TOF_THRESHOLD && distance > 0);
 
   // Debounce object detection
   if ((currentTime - lastTriggerTime) > TOF_DEBOUNCE) {
