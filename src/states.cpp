@@ -65,10 +65,13 @@ void setupStates() {
   Serial.print("Initializing States...");
 
   loadPositions(openPos, closePos);
+  int64_t lastPos = loadLastPosition();
+  encoder.setPosition(lastPos);
+  
   enterState(SystemState::TOGGLE_IDLE);
 
   Serial.print("Done\n");
-  Serial.printf("Loaded Positions: Open = %lld, Close = %lld\n", openPos, closePos);
+  Serial.printf("Loaded Positions: Open = %lld, Close = %lld, Current = %lld\n", openPos, closePos, lastPos);
 }
 
 // Handle system state transitions and logic
@@ -120,6 +123,8 @@ void enterState(SystemState newState) {
     switch (newState) {
       case SystemState::TOGGLE_IDLE:
       case SystemState::MANUAL_IDLE:
+        // Save last position for power loss recovery
+        saveLastPosition(encoder.getPosition());
         motorStop();
         break;
       case SystemState::TOGGLE_OPEN:

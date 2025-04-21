@@ -34,6 +34,20 @@ bool savePositions(int64_t openPos, int64_t closePos) {
   return true;
 }
 
+// Load last encoder position from flash memory
+int64_t loadLastPosition() {
+  // Defaults to 0 if not present
+  return memory.getLong64("lastPosition", 0);
+}
+
+// Save last encoder position to flash memory
+bool saveLastPosition(int64_t lastPos) {
+  if (memory.putLong64("lastPosition", lastPos) == 0) {
+    return false;
+  }
+  return true;
+}
+
 // Load open and close schedule times from flash memory
 void loadSchedule(ScheduleTime &openSched, ScheduleTime &closeSched) {
   // Defaults to 99 if not present
