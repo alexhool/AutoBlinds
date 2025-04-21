@@ -72,7 +72,7 @@ void setupStates() {
   enterState(SystemState::TOGGLE_IDLE);
 
   Serial.print("Done\n");
-  Serial.printf("Loaded Positions: Open = %lld, Close = %lld, Current = %lld\n", openPos, closePos, lastPos);
+  Serial.printf("*Loaded Positions: Open = %lld, Close = %lld, Current = %lld\n", openPos, closePos, lastPos);
 }
 
 // Handle system state transitions and logic

@@ -32,7 +32,7 @@ bool setupScheduler() {
   loadSchedule(openSched, closeSched);
 
   Serial.print("Done\n");
-  Serial.printf("Loaded Schedule: Open = %02d:%02d, Close = %02d:%02d\n", openSched.hour, openSched.minute,
+  Serial.printf("*Loaded Schedule: Open = %02d:%02d, Close = %02d:%02d\n", openSched.hour, openSched.minute,
     closeSched.hour, closeSched.minute);
 
   // Initialize Wi-Fi using WiFiManager libary
@@ -257,7 +257,8 @@ static void setupWebServer() {
         closeSched.hour, closeSched.minute);
       lastCheckedMinute = -1;
     } else {
-      Serial.print("ERROR: Failed to save schedule to memory!\n");
+      Serial.print("ERROR: Failed to Save Schedule\n");
+      enterState(SystemState::ERROR);
     }
     request->send(200, "text/html", "text/plain");
   });
