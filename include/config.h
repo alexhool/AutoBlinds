@@ -8,9 +8,9 @@ constexpr uint16_t WEB_SERVER_PORT = 80;
 constexpr char WIFI_AP_NAME[] = "AutoBlinds";
 constexpr char NTP_SERVER[] = "pool.ntp.org";
 constexpr char TIME_ZONE[] = "EST5EDT,M3.2.0/2,M11.1.0/2";
-constexpr unsigned long NTP_SYNC_INTERVAL = 24 * 3600 * 1000;
+constexpr unsigned long NTP_SYNC_INTERVAL = 12 * 3600 * 1000;
 constexpr unsigned long WIFI_CHECK_INTERVAL = 15000;
-constexpr unsigned long SCHEDULE_CHECK_INTERVAL = 50000;
+constexpr unsigned long SCHEDULE_CHECK_INTERVAL = 30000;
 
 // System constants
 constexpr uint32_t BTN_DEBOUNCE = 50;

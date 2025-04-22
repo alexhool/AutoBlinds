@@ -32,8 +32,20 @@ bool setupScheduler() {
   loadSchedule(openSched, closeSched);
 
   Serial.print("Done\n");
-  Serial.printf("*Loaded Schedule: Open = %02d:%02d, Close = %02d:%02d\n", openSched.hour, openSched.minute,
-    closeSched.hour, closeSched.minute);
+  // Format and print schedule times
+  char openTimeStr[6];
+  char closeTimeStr[6];
+  if (openSched.hour == 99) {
+    snprintf(openTimeStr, sizeof(openTimeStr), "N/A");
+  } else {
+    snprintf(openTimeStr, sizeof(openTimeStr), "%02d:%02d", openSched.hour, openSched.minute);
+  }
+  if (closeSched.hour == 99) {
+    snprintf(closeTimeStr, sizeof(closeTimeStr), "N/A");
+  } else {
+    snprintf(closeTimeStr, sizeof(closeTimeStr), "%02d:%02d", closeSched.hour, closeSched.minute);
+  }
+  Serial.printf("*Loaded Schedule: Open = %s, Close = %s\n", openTimeStr, closeTimeStr);
 
   // Initialize Wi-Fi using WiFiManager libary
   Serial.printf("Initializing Wi-Fi (SSID: %s)...\n", WIFI_AP_NAME);
@@ -62,6 +74,7 @@ bool setupScheduler() {
     delay(500);
   }
   Serial.print("Done\n");
+  Serial.printf("*Time Synced: %s", asctime(&timeinfo));
 
   // Start web server over Wi-Fi
   Serial.print("Initializing Web Server...");
@@ -263,8 +276,20 @@ static void setupWebServer() {
     if (saveSchedule(tempOpenSched, tempCloseSched)) {
       openSched = tempOpenSched;
       closeSched = tempCloseSched;
-      Serial.printf("Saved Schedule: Open = %02d:%02d, Close = %02d:%02d\n", openSched.hour, openSched.minute,
-        closeSched.hour, closeSched.minute);
+      // Format and print schedule times
+      char openTimeStr[6];
+      char closeTimeStr[6];
+      if (openSched.hour == 99) {
+        snprintf(openTimeStr, sizeof(openTimeStr), "N/A");
+      } else {
+        snprintf(openTimeStr, sizeof(openTimeStr), "%02d:%02d", openSched.hour, openSched.minute);
+      }
+      if (closeSched.hour == 99) {
+        snprintf(closeTimeStr, sizeof(closeTimeStr), "N/A");
+      } else {
+        snprintf(closeTimeStr, sizeof(closeTimeStr), "%02d:%02d", closeSched.hour, closeSched.minute);
+      }
+      Serial.printf("Saved Schedule: Open = %s, Close = %s\n", openTimeStr, closeTimeStr);
       lastCheckedMinute = -1;
     } else {
       Serial.print("ERROR: Failed to Save Schedule\n");
