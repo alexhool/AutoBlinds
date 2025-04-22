@@ -56,6 +56,11 @@ bool setupScheduler() {
   // Initializes system time using NTP server
   Serial.print("Initializing Time Server...");
   configTzTime(TIME_ZONE, NTP_SERVER);
+  struct tm timeinfo;
+  while (!getLocalTime(&timeinfo)) {
+    Serial.print(".");
+    delay(500);
+  }
   Serial.print("Done\n");
 
   // Start web server over Wi-Fi
