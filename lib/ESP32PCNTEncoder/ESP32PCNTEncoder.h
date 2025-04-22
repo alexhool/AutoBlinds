@@ -1,9 +1,11 @@
-/**
+/*
  * ESP32 Encoder Library using PCNT
  *
- * Based on ESP32Encoder library by hephaestus.
- * See LICENSE_ESP32Encoder for license details.
- * This notice applies to this file.
+ * SPDX-License-Identifier: LGPL-3.0-or-later
+ * SPDX-FileCopyrightText: Copyright 2025 Alexander Hool
+ *
+ * Derived from the ESP32Encoder library by hephaestus.
+ * See LICENSE_ESP32Encoder for original license terms.
  */
 
 #ifndef ESP32PCNTENCODER_H

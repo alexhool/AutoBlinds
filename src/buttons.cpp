@@ -1,3 +1,8 @@
+/*
+ * SPDX-License-Identifier: LGPL-3.0-or-later
+ * SPDX-FileCopyrightText: Copyright 2025 Alexander Hool
+ */
+
 #include "buttons.h"
 #include <Arduino.h>
 #include "config.h"

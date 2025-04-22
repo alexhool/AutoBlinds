@@ -1,3 +1,8 @@
+/*
+ * SPDX-License-Identifier: LGPL-3.0-or-later
+ * SPDX-FileCopyrightText: Copyright 2025 Alexander Hool
+ */
+
 #ifndef SCHEDULE_H
 #define SCHEDULE_H
 
