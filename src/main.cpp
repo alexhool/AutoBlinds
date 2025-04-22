@@ -13,9 +13,6 @@ void setup() {
   Serial.print("\n--- Setup ---\n");
 
   // Initialize external components
-  if (!setupScheduler()) {
-    Serial.print("WARNING: Network Setup Failed - Offline Mode\n");
-  }
   if (!setupMemory() || !setupMotor() || !setupTof()) {
     Serial.print("ERROR: Initialization Failed\n");
     while (true) {
@@ -27,6 +24,9 @@ void setup() {
       }
       delay(2);
     }
+  }
+  if (!setupScheduler()) {
+    Serial.print("WARNING: Network Setup Failed - Offline Mode\n");
   }
 
   // Initialze internal components

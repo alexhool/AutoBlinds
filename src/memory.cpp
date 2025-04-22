@@ -21,13 +21,13 @@ bool setupMemory() {
 // Load open and close positions from flash memory
 void loadPositions(int64_t &openPos, int64_t &closePos) {
   // Defaults to 0 if not present
-  openPos = memory.getLong64("openPosition", 0);
-  closePos = memory.getLong64("closePosition", 0);
+  openPos = memory.getLong64("openPos", 0);
+  closePos = memory.getLong64("closePos", 0);
 }
 
 // Save open and close positions to flash memory
 bool savePositions(int64_t openPos, int64_t closePos) {
-  if (memory.putLong64("openPosition", openPos) == 0 || memory.putLong64("closePosition", closePos) == 0) {
+  if (memory.putLong64("openPos", openPos) == 0 || memory.putLong64("closePos", closePos) == 0) {
     return false;
   }
   return true;
@@ -36,12 +36,12 @@ bool savePositions(int64_t openPos, int64_t closePos) {
 // Load last encoder position from flash memory
 int64_t loadLastPosition() {
   // Defaults to 0 if not present
-  return memory.getLong64("lastPosition", 0);
+  return memory.getLong64("lastPos", 0);
 }
 
 // Save last encoder position to flash memory
 bool saveLastPosition(int64_t lastPos) {
-  if (memory.putLong64("lastPosition", lastPos) == 0) {
+  if (memory.putLong64("lastPos", lastPos) == 0) {
     return false;
   }
   return true;
@@ -50,18 +50,18 @@ bool saveLastPosition(int64_t lastPos) {
 // Load open and close schedule times from flash memory
 void loadSchedule(ScheduleTime &openSched, ScheduleTime &closeSched) {
   // Defaults to 99 if not present
-  openSched.hour = memory.getInt("openScheduleHour", 99);
-  openSched.minute = memory.getInt("openScheduleMinute", 99);
-  closeSched.hour = memory.getInt("closeScheduleHour", 99);
-  closeSched.minute = memory.getInt("closeScheduleMinute", 99);
+  openSched.hour = memory.getUChar("openSchedH", 99);
+  openSched.minute = memory.getUChar("openSchedM", 99);
+  closeSched.hour = memory.getUChar("closeSchedH", 99);
+  closeSched.minute = memory.getUChar("closeSchedM", 99);
 }
 
 // Save open and close schedule times to flash memory
 bool saveSchedule(ScheduleTime openSched, ScheduleTime closeSched) {
-  if (memory.putInt("openScheduleHour", openSched.hour) == 0 ||
-      memory.putInt("openScheduleMinute", openSched.minute) == 0 ||
-      memory.putInt("closeScheduleHour", closeSched.hour) == 0 ||
-      memory.putInt("closeScheduleMinute", closeSched.minute) == 0) {
+  if (memory.putUChar("openSchedH", openSched.hour) == 0 ||
+      memory.putUChar("openSchedM", openSched.minute) == 0 ||
+      memory.putUChar("closeSchedH", closeSched.hour) == 0 ||
+      memory.putUChar("closeSchedM", closeSched.minute) == 0) {
     return false;
   }
   return true;

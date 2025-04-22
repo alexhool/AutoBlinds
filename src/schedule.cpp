@@ -177,7 +177,7 @@ const char index_html[] = R"rawliteral(
   </head>
 <body>
 
-  <h2>Manual Control</h2>
+  <h2>Control</h2>
   <form action="/open" method="get" style="display: inline-block; margin-right: 5px;">
     <button type="submit">Open</button>
   </form>
@@ -216,7 +216,7 @@ static void setupWebServer() {
     Serial.print("Web Server: Open Trigger\n");
     triggerOpen();
     // Redirect back to root page
-    request->send(200, "text/html", "text/plain");
+    request->redirect("/");
   });
 
   // Handle close trigger
@@ -224,7 +224,7 @@ static void setupWebServer() {
     Serial.print("Web Server: Close Trigger\n");
     triggerClose();
     // Redirect back to root page
-    request->send(200, "text/html", "text/plain");
+    request->redirect("/");
   });
 
   // Handle schedule form submission
@@ -270,7 +270,8 @@ static void setupWebServer() {
       Serial.print("ERROR: Failed to Save Schedule\n");
       enterState(SystemState::ERROR);
     }
-    request->send(200, "text/html", "text/plain");
+    // Redirect back to root page
+    request->redirect("/");
   });
 
   // Handle not found
