@@ -69,7 +69,24 @@ Moving Open, Moving Close, Manual Mode, Config Open, Config Close, Config Save, 
 
 ## Problems Encountered
 
-*
+* **ESP32-C6 Compatibility:** Integrating the ESP32-C6 was challenging due to its novelty. A significant
+portion of development time was dedicated to utilizing the encoder as the board has newer PCNT harware. This involved
+creating a custom library (`ESP32PCNTEncoder`) by navigating technical documentation and using an existing Arduino
+library as a baseline.
+
+* **Position Accuracy:** Maintaining accurate encoder readings during rapid motor movements was challenging due to
+motor coasting at the target position. Adjusting the motor driver outputs to enable braking resolved the drift.
+Setting an appropriate position tolerance and saving the last known encoder position to memory helped prevent
+inaccuracies even after a power loss.
+
+* **State Machine Logic:** Ensuring clean transitions between system states required careful debugging. Initially, the
+system occasionally skipped states upon button release. This was resolved by implementing boolean flags to correctly
+handle button events during specific state transitions. Managing timeouts for different modes also added complexity.
+
+* **Web Server & Persistence:** Implementing the web server’s scheduler, parsing HTML form data, and reliably saving
+settings presented difficulties. Parsing the form required discovering the `sscanf()` function. During debugging, it
+became clear that saving schedules was failing because the key names exceeded the maximum length allowed by the
+Preferences library.
 
 ---
 
