@@ -109,7 +109,25 @@ battery-powered options.
 
 ## Potential Improvements
 
-*
+* **Motor Control:** Implement a PID control loop for smoother, more precise movement, and develop an automatic
+calibration routine to detect blind position limits during initial setup.
+
+* **Scheduling:** Implement per-day scheduling options and allow setting schedules based on sunrise and sunset times.
+
+* **User Interface:** Develop a more sophisticated web interface with improved visual design, real-time status updates,
+and graphical blind position feedback/control.
+
+* **Security:** Enhance the security of the web interface with basic authentication and HTTPS encryption to prevent
+unauthorized access.
+
+* **Over-the-Air (OTA) Updates:** Implement OTA firmware updates via Wi-Fi to eliminate the need for physical access
+for reflashing.
+
+* **Enclosure:** Create a 3D-printed enclosure and a custom PCB for the components for a smaller, aesthetically
+pleasing package.
+
+* **Power:** Design a version that can be powered by rechargeable batteries, with appropriate power management (sleep
+modes, battery monitoring, and interrupts instead of polling). 
 
 ---
 
