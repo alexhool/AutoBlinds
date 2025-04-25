@@ -92,7 +92,18 @@ Preferences library.
 
 ## Comparison to Real-World Systems
 
-*
+* **Target Application:** Unlike products such as SwitchBot Curtain, which are designed for rail-based curtains moving
+horizontally, AutoBlinds specifically targets roller blinds operated by a vertical beaded chain.
+
+* **Installation & Cost:** AutoBlinds is a cost-effective retrofit solution for existing beaded chain roller blinds,
+whereas many commercial motorized blind systems require a complete replacement of the window covering.
+
+* **Control Methods:** Unlike many commercial options that rely on proprietary RF protocols or cloud services,
+AutoBlinds offers local network control via its web interface, enhancing user privacy and eliminating the need for app
+downloads. It also supports a wider range of control inputs, improving accessibility and operational independence.
+
+* **Power:** AutoBlinds requires a wired 12V power source, whereas most commercial solutions typically offer
+battery-powered options.
 
 ---
 
