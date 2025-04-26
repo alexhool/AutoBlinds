@@ -56,15 +56,21 @@ drift.
 close their blinds and program the daily activation schedule without physical access to the device. The schedules are
 saved to the ESP32's non-volatile memory.
 
-* **Tactile Switches (x3):** Momentary buttons that provide the primary means for manual opening/closing, switching
-between operational modes (Toggle, Manual, and Configuration), and setting the physical open/close limits during the
-setup process.
+* **Tactile Switches (SPST):** Three momentary buttons that provide the primary means for manual opening/closing,
+switching between operational modes (Toggle, Manual, and Configuration), and setting the physical open/close limits
+during the setup process.
 
 * **RGB LED:** It provides visual status feedback to the user, indicating the system's current state (Setup, Idle,
 Moving Open, Moving Close, Manual Mode, Config Open, Config Close, Config Save, and Error) and aiding in
 troubleshooting.
 
 * **Buck Converter:** It converts the 12V input supply voltage to 5V in order to power the ESP32 and peripherals.
+
+---
+
+## Circuit Diagram
+
+<img src="assets/circuit_diagram.png" alt="Circuit Diagram" width="600"/>
 
 ---
 
